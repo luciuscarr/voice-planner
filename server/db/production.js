@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 let pool;
 
-const initProductionDatabase = async () => {
+const initDatabase = async () => {
   try {
     // Use Railway PostgreSQL if available, otherwise fallback to SQLite
     if (process.env.DATABASE_URL) {
@@ -54,4 +54,4 @@ const getDatabase = () => {
   return pool;
 };
 
-module.exports = { initProductionDatabase, getDatabase };
+module.exports = { initDatabase, getDatabase };

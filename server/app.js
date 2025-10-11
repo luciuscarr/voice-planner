@@ -7,7 +7,11 @@ require('dotenv').config();
 
 const taskRoutes = require('./routes/tasks');
 const calendarRoutes = require('./routes/calendar');
-const { initDatabase } = require('./db/init');
+
+// Use production database if DATABASE_URL is set, otherwise use SQLite
+const { initDatabase } = process.env.DATABASE_URL 
+  ? require('./db/production') 
+  : require('./db/init');
 
 const app = express();
 const server = http.createServer(app);

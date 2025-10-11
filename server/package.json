@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon app.js",
     "start": "node app.js",
+    "build": "echo 'No build step required'",
     "init-db": "node scripts/init-db.js",
     "setup": "npm install && npm run init-db"
   },

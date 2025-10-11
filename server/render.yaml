@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: voice-planner-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+databases:
+  - name: voice-planner-db
+    databaseName: voice_planner
+    plan: free
