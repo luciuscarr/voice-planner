@@ -4,6 +4,7 @@ import { VoiceRecorder } from './components/VoiceRecorder';
 import { TaskList } from './components/TaskList';
 import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';
+import { useState } from "react";
 
 // Mock data for development
 const mockTasks: Task[] = [
