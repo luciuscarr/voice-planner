@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { HelpCircle, Settings, Mic } from 'lucide-react';
 import { VoiceRecorder } from './components/VoiceRecorder';

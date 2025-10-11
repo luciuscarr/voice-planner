@@ -32,8 +32,8 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
   const [transcript, setTranscript] = useState('');
   const [confidence, setConfidence] = useState(0);
   
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const isSupported = typeof window !== 'undefined' && 'webkitSpeechRecognition' in window;
+  const recognitionRef = useRef<any>(null);
+  const isSupported = typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
 
   const startListening = useCallback(() => {
     if (!isSupported || !recognitionRef.current) {
@@ -65,7 +65,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
   // Initialize speech recognition
   useState(() => {
     if (isSupported) {
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
       const recognition = recognitionRef.current;
@@ -77,7 +77,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
         setIsListening(true);
       };
 
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: any) => {
         let finalTranscript = '';
         let interimTranscript = '';
         let maxConfidence = 0;
@@ -107,7 +107,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
         });
       };
 
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: any) => {
         const errorMessage = `Speech recognition error: ${event.error}`;
         onError?.(errorMessage);
         setIsListening(false);

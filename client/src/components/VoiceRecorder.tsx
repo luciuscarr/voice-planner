@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Square, Play, Pause } from 'lucide-react';
+import { Mic, MicOff, Square } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { parseIntent } from '../utils/parseIntent';
 import { VoiceCommand } from '@shared/types';
@@ -15,7 +15,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const { isListening, isSupported, startListening, stopListening, reset } = useSpeechRecognition({
+  const { isSupported, startListening, stopListening, reset } = useSpeechRecognition({
     onResult: (result) => {
       setTranscript(result.transcript);
       onTranscription(result.transcript);
