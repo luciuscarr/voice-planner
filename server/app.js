@@ -1,0 +1,138 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+const taskRoutes = require('./routes/tasks');
+const calendarRoutes = require('./routes/calendar');
+const { initDatabase } = require('./db/init');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      // Add your computer's IP address here - you'll need to replace with your actual IP
+      "http://192.168.1.100:3000", // Replace with your computer's IP
+      "http://192.168.0.100:3000", // Common alternative IP range
+    ],
+    methods: ["GET", "POST"]
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    // Add your computer's IP address here
+    "http://192.168.1.100:3000", // Replace with your computer's IP
+    "http://192.168.0.100:3000", // Common alternative IP range
+  ],
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// Routes
+app.use('/api/tasks', taskRoutes);
+app.use('/api/calendar', calendarRoutes);
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  // Handle voice command processing
+  socket.on('voice_command', async (command) => {
+    try {
+      console.log('Received voice command:', command);
+      
+      // Broadcast the command to all connected clients
+      socket.broadcast.emit('voice_command_received', command);
+      
+      // Process the command (this would integrate with your intent parsing)
+      const processedCommand = {
+        ...command,
+        processedAt: new Date().toISOString(),
+        status: 'processed'
+      };
+      
+      socket.emit('voice_command_processed', processedCommand);
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      socket.emit('voice_command_error', { error: error.message });
+    }
+  });
+
+  // Handle task updates
+  socket.on('task_updated', (task) => {
+    console.log('Task updated:', task);
+    socket.broadcast.emit('task_updated', task);
+  });
+
+  // Handle task creation
+  socket.on('task_created', (task) => {
+    console.log('Task created:', task);
+    socket.broadcast.emit('task_created', task);
+  });
+
+  // Handle task deletion
+  socket.on('task_deleted', (taskId) => {
+    console.log('Task deleted:', taskId);
+    socket.broadcast.emit('task_deleted', taskId);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// Serve React app for all non-API routes (only in production)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+} else {
+  // In development, just serve a simple message for non-API routes
+  app.get('*', (req, res) => {
+    res.json({ 
+      message: 'Voice Planner API Server', 
+      status: 'running',
+      frontend: 'Run "cd client && npm run dev" to start the React frontend',
+      api: `http://localhost:${PORT}/api`
+    });
+  });
+}
+
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initDatabase();
+    console.log('Database initialized successfully');
+    
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`WebSocket server ready for connections`);
+      console.log(`API available at http://localhost:${PORT}/api`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Process terminated');
+  });
+});
+
+startServer();
