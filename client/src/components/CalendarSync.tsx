@@ -37,13 +37,19 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       
       // Get authorization URL
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      console.log('🔗 Connecting to API:', apiUrl);
+      
       const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
+      console.log('📡 Response status:', response.status);
       
       if (!response.ok) {
-        throw new Error('Failed to get auth URL');
+        const errorText = await response.text();
+        console.error('❌ API Error:', errorText);
+        throw new Error(`Failed to get auth URL: ${response.status} - ${errorText}`);
       }
       
       const { authUrl } = await response.json();
+      console.log('✅ Got auth URL:', authUrl);
       
       // Open popup window for OAuth
       const popup = window.open(
@@ -62,10 +68,14 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       }, 1000);
 
     } catch (error) {
-      console.error('Error connecting to Google Calendar:', error);
-      setErrorMessage('Calendar integration not available. Set up Google OAuth in backend.');
+      console.error('❌ Error connecting to Google Calendar:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setErrorMessage(`Calendar error: ${errorMsg}`);
       setSyncStatus('error');
       setIsLoading(false);
+      
+      // Show alert to user
+      alert(`Calendar Connection Error:\n${errorMsg}\n\nCheck console for details.`);
     }
   };
 
