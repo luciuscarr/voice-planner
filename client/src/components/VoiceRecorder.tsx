@@ -6,7 +6,7 @@ import { parseIntent } from '../utils/parseIntent';
 import { VoiceCommand } from '@shared/types';
 
 interface VoiceRecorderProps {
-  onCommand: (command: VoiceCommand) => void;
+  onCommand: (command: VoiceCommand | VoiceCommand[]) => void;
   onTranscription: (text: string) => void;
 }
 
