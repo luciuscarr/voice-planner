@@ -20,9 +20,9 @@ const io = socketIo(server, {
     origin: [
       "http://localhost:3000",
       "http://127.0.0.1:3000",
-      // Add your computer's IP address here - you'll need to replace with your actual IP
-      "http://192.168.1.100:3000", // Replace with your computer's IP
-      "http://192.168.0.100:3000", // Common alternative IP range
+      /^https:\/\/.*\.vercel\.app$/, // All Vercel deployments
+      "http://192.168.1.100:3000",
+      "http://192.168.0.100:3000",
     ],
     methods: ["GET", "POST"]
   }
@@ -35,9 +35,11 @@ app.use(cors({
   origin: [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://voice-planner-client-hchjysqsd-lu-ius-projects.vercel.app", // Your Vercel preview URL
+    /^https:\/\/.*\.vercel\.app$/, // All Vercel deployments
     // Add your computer's IP address here
-    "http://192.168.1.100:3000", // Replace with your computer's IP
-    "http://192.168.0.100:3000", // Common alternative IP range
+    "http://192.168.1.100:3000",
+    "http://192.168.0.100:3000",
   ],
   credentials: true
 }));

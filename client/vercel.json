@@ -1,8 +1,8 @@
 {
   "build": {
     "env": {
-      "VITE_API_URL": "https://voice-planner.onrender.com/",
-      "VITE_WEBSOCKET_URL": "wss://voice-planner.onrender.com/"
+      "VITE_API_URL": "https://voice-planner.onrender.com",
+      "VITE_WEBSOCKET_URL": "wss://voice-planner.onrender.com"
     }
   },
   "rewrites": [
