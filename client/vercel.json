@@ -1,8 +1,4 @@
 {
-  "buildCommand": "cd client && npm run build",
-  "outputDirectory": "client/dist",
-  "installCommand": "npm install --prefix client",
-  "devCommand": "cd client && npm run dev",
   "build": {
     "env": {
       "VITE_API_URL": "https://voice-planner.onrender.com/",
