@@ -54,23 +54,39 @@ router.get('/auth-url', (req, res) => {
 });
 
 // Handle Google Calendar OAuth callback
-router.post('/auth-callback', async (req, res) => {
+router.get('/auth-callback', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code } = req.query;
     
     if (!code) {
       return res.status(400).json({ error: 'Authorization code required' });
     }
 
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://voice-planner.onrender.com/api/calendar/auth-callback';
+    const oauth2 = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri
+    );
 
-    // Store tokens (in production, store in database)
-    res.json({ 
-      success: true, 
-      message: 'Google Calendar connected successfully',
-      tokens: tokens // In production, don't return tokens
-    });
+    const { tokens } = await oauth2.getToken(code);
+    
+    // Send HTML that closes popup and sends token to parent window
+    res.send(`
+      <html>
+        <script>
+          window.opener.postMessage({ 
+            type: 'google-calendar-auth', 
+            success: true,
+            accessToken: '${tokens.access_token}'
+          }, '*');
+          window.close();
+        </script>
+        <body>
+          <h2>Authorization successful! You can close this window.</h2>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error('Google Calendar auth error:', error);
     res.status(500).json({ error: 'Failed to authenticate with Google Calendar' });

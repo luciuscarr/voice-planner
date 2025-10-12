@@ -51,6 +51,20 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       const { authUrl } = await response.json();
       console.log('✅ Got auth URL:', authUrl);
       
+      // Listen for OAuth callback message
+      const messageHandler = (event: MessageEvent) => {
+        if (event.data.type === 'google-calendar-auth' && event.data.success) {
+          // Store access token
+          localStorage.setItem('google_access_token', event.data.accessToken);
+          setIsConnected(true);
+          setSyncStatus('idle');
+          setIsLoading(false);
+          window.removeEventListener('message', messageHandler);
+        }
+      };
+      
+      window.addEventListener('message', messageHandler);
+
       // Open popup window for OAuth
       const popup = window.open(
         authUrl,
@@ -58,12 +72,12 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
         'width=500,height=600,scrollbars=yes,resizable=yes'
       );
 
-      // Listen for popup completion
+      // Cleanup if popup is closed manually
       const checkClosed = setInterval(() => {
         if (popup?.closed) {
           clearInterval(checkClosed);
           setIsLoading(false);
-          checkConnection();
+          window.removeEventListener('message', messageHandler);
         }
       }, 1000);
 
