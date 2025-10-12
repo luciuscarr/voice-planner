@@ -80,12 +80,38 @@ function parseSingleTask(transcript: string): VoiceCommand {
     }
   }
 
-  // Extract title (remove command words)
+  // Extract title (remove command words and calendar-related phrases)
   let title = transcript;
   const commandWords = Object.values(INTENT_KEYWORDS).flat();
   commandWords.forEach(word => {
     const regex = new RegExp(`\\b${word}\\b`, 'gi');
     title = title.replace(regex, '').trim();
+  });
+  
+  // Remove calendar-related phrases
+  const calendarPhrases = [
+    /\bto my calendar\b/gi,
+    /\bto the calendar\b/gi,
+    /\bon my calendar\b/gi,
+    /\bin my calendar\b/gi,
+    /\bto calendar\b/gi
+  ];
+  
+  calendarPhrases.forEach(phrase => {
+    title = title.replace(phrase, '').trim();
+  });
+  
+  // Remove time and date phrases from title (they'll be in dueDate)
+  const timePhrases = [
+    /\bat\s+\d{1,2}:?\d{0,2}\s*(am|pm)?\b/gi,
+    /\btomorrow\b/gi,
+    /\btoday\b/gi,
+    /\bnext\s+\w+\b/gi,
+    /\bthis\s+\w+\b/gi
+  ];
+  
+  timePhrases.forEach(phrase => {
+    title = title.replace(phrase, '').trim();
   });
 
   // Extract priority
@@ -99,7 +125,82 @@ function parseSingleTask(transcript: string): VoiceCommand {
 
   // Extract due date
   let dueDate: string | undefined;
+  let baseDate: Date | undefined;
+  let specificTime: { hours: number; minutes: number } | undefined;
   
+  // First, check for day references (today, tomorrow, etc.)
+  if (TIME_PATTERNS.tomorrow.test(transcript)) {
+    baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + 1);
+  } else if (TIME_PATTERNS.today.test(transcript)) {
+    baseDate = new Date();
+  } else if (TIME_PATTERNS.nextWeek.test(transcript)) {
+    baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + 7);
+  } else if (TIME_PATTERNS.thisWeek.test(transcript)) {
+    baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + (7 - baseDate.getDay()));
+  }
+  
+  // Then, check for specific time
+  const timeMatch = transcript.match(TIME_PATTERNS.specificTime);
+  if (timeMatch) {
+    const timeDetails = timeMatch[0].match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
+    if (timeDetails) {
+      let hours = parseInt(timeDetails[1]);
+      const minutes = timeDetails[2] ? parseInt(timeDetails[2]) : 0;
+      const ampm = timeDetails[3]?.toLowerCase();
+      
+      if (ampm === 'pm' && hours !== 12) hours += 12;
+      if (ampm === 'am' && hours === 12) hours = 0;
+      
+      specificTime = { hours, minutes };
+    }
+  }
+  
+  // Combine base date with specific time
+  if (baseDate && specificTime) {
+    baseDate.setHours(specificTime.hours, specificTime.minutes, 0, 0);
+    dueDate = baseDate.toISOString();
+  } else if (baseDate) {
+    dueDate = baseDate.toISOString();
+  } else if (specificTime) {
+    const date = new Date();
+    date.setHours(specificTime.hours, specificTime.minutes, 0, 0);
+    dueDate = date.toISOString();
+  }
+  
+  // Check for relative time if no other date found
+  if (!dueDate) {
+    const relativeMatch = transcript.match(TIME_PATTERNS.relativeTime);
+    if (relativeMatch) {
+      const details = relativeMatch[0].match(/(\d+)\s+(minute|hour|day|week)/i);
+      if (details) {
+        const amount = parseInt(details[1]);
+        const unit = details[2].toLowerCase();
+        const futureDate = new Date();
+        
+        switch (unit) {
+          case 'minute':
+            futureDate.setMinutes(futureDate.getMinutes() + amount);
+            break;
+          case 'hour':
+            futureDate.setHours(futureDate.getHours() + amount);
+            break;
+          case 'day':
+            futureDate.setDate(futureDate.getDate() + amount);
+            break;
+          case 'week':
+            futureDate.setDate(futureDate.getDate() + (amount * 7));
+            break;
+        }
+        dueDate = futureDate.toISOString();
+      }
+    }
+  }
+  
+  // Old code for other patterns - removed
+  /*
   // Check for specific time patterns
   for (const [patternName, pattern] of Object.entries(TIME_PATTERNS)) {
     const match = transcript.match(pattern);
