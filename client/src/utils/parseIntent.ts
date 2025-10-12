@@ -2,13 +2,23 @@ import { VoiceCommand } from '@shared/types';
 
 // Keywords for different intents
 const INTENT_KEYWORDS = {
-  task: ['add', 'create', 'new', 'make', 'do', 'complete', 'finish'],
-  reminder: ['remind', 'reminder', 'alert', 'notify', 'wake up'],
+  task: ['add', 'create', 'new', 'make', 'do', 'complete', 'finish', 'need to'],
+  reminder: ['remind', 'reminder', 'alert', 'notify', 'wake up', 'don\'t forget'],
   note: ['note', 'write', 'record', 'remember', 'jot down'],
   schedule: ['schedule', 'meeting', 'appointment', 'book', 'plan', 'arrange'],
   delete: ['delete', 'remove', 'cancel', 'clear', 'erase'],
   complete: ['done', 'finished', 'completed', 'accomplished', 'check off']
 };
+
+// Separators that indicate multiple tasks
+const TASK_SEPARATORS = [
+  ', and ',
+  ' and then ',
+  ' also ',
+  ' plus ',
+  ', ',
+  ' and ',
+];
 
 // Priority keywords
 const PRIORITY_KEYWORDS = {
@@ -27,7 +37,33 @@ const TIME_PATTERNS = {
   relativeTime: /\b(in|after)\s+(\d+)\s+(minute|hour|day|week)s?\b/i
 };
 
-export function parseIntent(transcript: string): VoiceCommand {
+// Split transcript into multiple tasks if separated by keywords
+function splitIntoMultipleTasks(transcript: string): string[] {
+  let tasks = [transcript];
+  
+  // Try each separator
+  for (const separator of TASK_SEPARATORS) {
+    const newTasks: string[] = [];
+    
+    for (const task of tasks) {
+      // Check if this task contains the separator
+      if (task.toLowerCase().includes(separator.toLowerCase())) {
+        // Split by this separator
+        const parts = task.split(new RegExp(separator, 'gi'));
+        newTasks.push(...parts.filter(p => p.trim().length > 0));
+      } else {
+        newTasks.push(task);
+      }
+    }
+    
+    tasks = newTasks;
+  }
+  
+  return tasks.filter(t => t.trim().length > 3); // Filter out very short fragments
+}
+
+// Parse a single task
+function parseSingleTask(transcript: string): VoiceCommand {
   const lowerTranscript = transcript.toLowerCase();
   
   // Detect intent
@@ -143,4 +179,26 @@ export function parseIntent(transcript: string): VoiceCommand {
       priority
     }
   };
+}
+
+// Main export function - handles multiple tasks
+export function parseIntent(transcript: string): VoiceCommand | VoiceCommand[] {
+  // Check if transcript contains multiple tasks
+  const tasks = splitIntoMultipleTasks(transcript);
+  
+  if (tasks.length === 1) {
+    // Single task
+    return parseSingleTask(transcript);
+  } else {
+    // Multiple tasks - parse each one
+    return tasks.map(task => {
+      // Prepend "add" if the task doesn't start with a command word
+      const hasCommand = Object.values(INTENT_KEYWORDS).flat().some(keyword => 
+        task.toLowerCase().trim().startsWith(keyword)
+      );
+      
+      const taskText = hasCommand ? task : `add ${task}`;
+      return parseSingleTask(taskText.trim());
+    });
+  }
 }

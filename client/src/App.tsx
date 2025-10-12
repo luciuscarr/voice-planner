@@ -58,26 +58,41 @@ function App() {
     }
   });
 
-  // Handle voice commands
-  const handleVoiceCommand = (command: VoiceCommand) => {
+  // Handle voice commands (can be single or multiple)
+  const handleVoiceCommand = (command: VoiceCommand | VoiceCommand[]) => {
     setIsProcessing(true);
     
     // Simulate processing delay
     setTimeout(() => {
-      if (command.intent === 'task' || command.intent === 'reminder' || command.intent === 'note') {
-        const newTask: Task = {
-          id: Date.now().toString(),
-          title: command.extractedData?.title || command.text,
-          description: command.intent === 'note' ? 'Voice note' : undefined,
-          completed: false,
-          priority: command.extractedData?.priority || 'medium',
-          dueDate: command.extractedData?.dueDate,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+      const commands = Array.isArray(command) ? command : [command];
+      const newTasks: Task[] = [];
+      
+      commands.forEach((cmd, index) => {
+        if (cmd.intent === 'task' || cmd.intent === 'reminder' || cmd.intent === 'note' || cmd.intent === 'schedule') {
+          const newTask: Task = {
+            id: `${Date.now()}-${index}`,
+            title: cmd.extractedData?.title || cmd.text,
+            description: cmd.intent === 'note' ? 'Voice note' : undefined,
+            completed: false,
+            priority: cmd.extractedData?.priority || 'medium',
+            dueDate: cmd.extractedData?.dueDate,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          
+          newTasks.push(newTask);
+        }
+      });
+      
+      if (newTasks.length > 0) {
+        setTasks(prev => [...newTasks, ...prev]);
         
-        setTasks(prev => [newTask, ...prev]);
+        // Show success message
+        if (newTasks.length > 1) {
+          console.log(`✅ Created ${newTasks.length} tasks!`);
+        }
       }
+      
       setIsProcessing(false);
     }, 1000);
   };
