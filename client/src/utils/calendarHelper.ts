@@ -1,0 +1,194 @@
+// Helper functions for Google Calendar integration
+
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+}
+
+export interface TimeSlot {
+  start: Date;
+  end: Date;
+  duration: number; // in minutes
+}
+
+// Fetch events from Google Calendar
+export async function fetchCalendarEvents(
+  accessToken: string,
+  startDate: Date,
+  endDate: Date
+): Promise<CalendarEvent[]> {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const response = await fetch(
+      `${apiUrl}/api/calendar/events?accessToken=${accessToken}&timeMin=${startDate.toISOString()}&timeMax=${endDate.toISOString()}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch calendar events');
+    }
+
+    const data = await response.json();
+    return data.events || [];
+  } catch (error) {
+    console.error('Error fetching calendar events:', error);
+    return [];
+  }
+}
+
+// Find free time slots in a day
+export function findFreeTimeSlots(
+  events: CalendarEvent[],
+  date: Date,
+  minDuration: number = 30, // minimum slot duration in minutes
+  workingHours: { start: number; end: number } = { start: 9, end: 17 } // 9 AM to 5 PM
+): TimeSlot[] {
+  const freeSlots: TimeSlot[] = [];
+  
+  // Set up working day boundaries
+  const dayStart = new Date(date);
+  dayStart.setHours(workingHours.start, 0, 0, 0);
+  
+  const dayEnd = new Date(date);
+  dayEnd.setHours(workingHours.end, 0, 0, 0);
+
+  // Sort events by start time
+  const sortedEvents = events
+    .map(event => ({
+      start: new Date(event.start),
+      end: new Date(event.end)
+    }))
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  let currentTime = dayStart;
+
+  // Find gaps between events
+  for (const event of sortedEvents) {
+    if (event.start > currentTime) {
+      const gapDuration = (event.start.getTime() - currentTime.getTime()) / (1000 * 60);
+      
+      if (gapDuration >= minDuration) {
+        freeSlots.push({
+          start: new Date(currentTime),
+          end: new Date(event.start),
+          duration: gapDuration
+        });
+      }
+    }
+    
+    // Move current time to end of this event
+    if (event.end > currentTime) {
+      currentTime = new Date(event.end);
+    }
+  }
+
+  // Check for free time after last event
+  if (currentTime < dayEnd) {
+    const remainingDuration = (dayEnd.getTime() - currentTime.getTime()) / (1000 * 60);
+    
+    if (remainingDuration >= minDuration) {
+      freeSlots.push({
+        start: new Date(currentTime),
+        end: new Date(dayEnd),
+        duration: remainingDuration
+      });
+    }
+  }
+
+  return freeSlots;
+}
+
+// Find the best time slot for a task
+export function findBestTimeSlot(
+  freeSlots: TimeSlot[],
+  preferredTime?: 'morning' | 'afternoon' | 'evening',
+  duration: number = 60 // task duration in minutes
+): TimeSlot | null {
+  // Filter slots that can fit the task
+  const suitableSlots = freeSlots.filter(slot => slot.duration >= duration);
+  
+  if (suitableSlots.length === 0) {
+    return null;
+  }
+
+  // If no preference, return the first available slot
+  if (!preferredTime) {
+    return suitableSlots[0];
+  }
+
+  // Define time preferences
+  const timeRanges = {
+    morning: { start: 6, end: 12 },
+    afternoon: { start: 12, end: 17 },
+    evening: { start: 17, end: 22 }
+  };
+
+  const range = timeRanges[preferredTime];
+
+  // Find slots in preferred time range
+  const preferredSlots = suitableSlots.filter(slot => {
+    const hour = slot.start.getHours();
+    return hour >= range.start && hour < range.end;
+  });
+
+  return preferredSlots.length > 0 ? preferredSlots[0] : suitableSlots[0];
+}
+
+// Format time slot for display
+export function formatTimeSlot(slot: TimeSlot): string {
+  const startTime = slot.start.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  });
+  
+  const endTime = slot.end.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  });
+
+  return `${startTime} - ${endTime}`;
+}
+
+// Parse "find time" commands
+export function parseTimePreference(text: string): {
+  duration?: number;
+  preference?: 'morning' | 'afternoon' | 'evening';
+  date?: Date;
+} {
+  const lowerText = text.toLowerCase();
+  const result: any = {};
+
+  // Detect time preference
+  if (lowerText.includes('morning')) {
+    result.preference = 'morning';
+  } else if (lowerText.includes('afternoon')) {
+    result.preference = 'afternoon';
+  } else if (lowerText.includes('evening')) {
+    result.preference = 'evening';
+  }
+
+  // Detect duration (in minutes or hours)
+  const hourMatch = lowerText.match(/(\d+)\s*hour/);
+  if (hourMatch) {
+    result.duration = parseInt(hourMatch[1]) * 60;
+  }
+
+  const minuteMatch = lowerText.match(/(\d+)\s*minute/);
+  if (minuteMatch) {
+    result.duration = parseInt(minuteMatch[1]);
+  }
+
+  // Detect date
+  if (lowerText.includes('tomorrow')) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    result.date = tomorrow;
+  } else if (lowerText.includes('today')) {
+    result.date = new Date();
+  }
+
+  return result;
+}

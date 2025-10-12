@@ -5,6 +5,7 @@ import { VoiceRecorder } from './components/VoiceRecorder';
 import { TaskList } from './components/TaskList';
 import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';
+import { fetchCalendarEvents, findFreeTimeSlots, findBestTimeSlot, formatTimeSlot, parseTimePreference } from './utils/calendarHelper';
 
 
 // Mock data for development
@@ -59,12 +60,22 @@ function App() {
   });
 
   // Handle voice commands (can be single or multiple)
-  const handleVoiceCommand = (command: VoiceCommand | VoiceCommand[]) => {
+  const handleVoiceCommand = async (command: VoiceCommand | VoiceCommand[]) => {
     setIsProcessing(true);
     
-    // Simulate processing delay
+    const commands = Array.isArray(command) ? command : [command];
+    
+    // Check if any command is a "find time" request
+    const findTimeCommand = commands.find(cmd => cmd.intent === 'findTime');
+    
+    if (findTimeCommand) {
+      await handleFindTimeCommand(findTimeCommand);
+      setIsProcessing(false);
+      return;
+    }
+    
+    // Process regular task commands
     setTimeout(() => {
-      const commands = Array.isArray(command) ? command : [command];
       const newTasks: Task[] = [];
       
       commands.forEach((cmd, index) => {
@@ -95,6 +106,70 @@ function App() {
       
       setIsProcessing(false);
     }, 1000);
+  };
+
+  // Handle "find time" commands
+  const handleFindTimeCommand = async (command: VoiceCommand) => {
+    try {
+      // Check if user has connected Google Calendar
+      const accessToken = localStorage.getItem('google_access_token');
+      
+      if (!accessToken) {
+        alert('Please connect Google Calendar first to find available time slots!');
+        return;
+      }
+
+      // Parse the time preference from command
+      const { duration = 60, preference, date = new Date() } = parseTimePreference(command.text);
+      
+      // Fetch calendar events for the specified date
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const events = await fetchCalendarEvents(accessToken, startOfDay, endOfDay);
+      
+      // Find free time slots
+      const freeSlots = findFreeTimeSlots(events, date, duration);
+      
+      if (freeSlots.length === 0) {
+        alert(`No free time slots found for ${date.toLocaleDateString()}. Your day is fully booked!`);
+        return;
+      }
+      
+      // Find the best slot based on preference
+      const bestSlot = findBestTimeSlot(freeSlots, preference, duration);
+      
+      if (!bestSlot) {
+        alert(`No suitable time slots found for a ${duration}-minute task.`);
+        return;
+      }
+      
+      // Create a task with the suggested time
+      const taskTitle = command.extractedData?.title || command.text.replace(/find.*time.*to/i, '').trim();
+      
+      const newTask: Task = {
+        id: Date.now().toString(),
+        title: taskTitle || 'Scheduled task',
+        description: `Suggested time: ${formatTimeSlot(bestSlot)}`,
+        completed: false,
+        priority: command.extractedData?.priority || 'medium',
+        dueDate: bestSlot.start.toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      setTasks(prev => [newTask, ...prev]);
+      
+      // Show success message with suggested time
+      alert(`✅ Found free time!\n\nSuggested: ${formatTimeSlot(bestSlot)}\n\nTask created with this time slot.`);
+      
+    } catch (error) {
+      console.error('Error finding time:', error);
+      alert('Failed to find available time. Please try again.');
+    }
   };
 
   // Task management functions

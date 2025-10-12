@@ -11,12 +11,14 @@ export interface Task {
 
 export interface VoiceCommand {
   text: string;
-  intent: 'task' | 'reminder' | 'note' | 'schedule' | 'unknown';
+  intent: 'task' | 'reminder' | 'note' | 'schedule' | 'findTime' | 'unknown';
   confidence: number;
   extractedData?: {
     title?: string;
     dueDate?: string;
     priority?: 'low' | 'medium' | 'high';
+    timePreference?: 'morning' | 'afternoon' | 'evening';
+    duration?: number;
   };
 }
 
