@@ -25,17 +25,32 @@ const initCalendar = () => {
 
 // Get Google Calendar authorization URL
 router.get('/auth-url', (req, res) => {
-  if (!initCalendar()) {
-    return res.status(500).json({ error: 'Google Calendar not configured' });
+  try {
+    // Check if credentials are configured
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(500).json({ error: 'Google Calendar credentials not configured' });
+    }
+
+    // Reinitialize oauth2Client with current env vars
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://voice-planner.onrender.com/api/calendar/auth-callback';
+    const oauth2 = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri
+    );
+
+    const authUrl = oauth2.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/calendar'],
+      prompt: 'consent'
+    });
+
+    console.log('Generated auth URL with redirect:', redirectUri);
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Error generating auth URL:', error);
+    res.status(500).json({ error: error.message });
   }
-
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/calendar'],
-    prompt: 'consent'
-  });
-
-  res.json({ authUrl });
 });
 
 // Handle Google Calendar OAuth callback
