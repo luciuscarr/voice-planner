@@ -46,6 +46,13 @@ function App() {
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Debug: Log API URL on mount
+  useState(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    console.log('🔧 API URL:', apiUrl);
+    console.log('🔧 All env vars:', import.meta.env);
+  });
+
   // Handle voice commands
   const handleVoiceCommand = (command: VoiceCommand) => {
     setIsProcessing(true);
@@ -127,7 +134,12 @@ function App() {
               <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
                 <Mic className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900">Voice Planner</h1>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Voice Planner</h1>
+                <p className="text-xs text-gray-500">
+                  API: {import.meta.env.VITE_API_URL || 'localhost:3001'}
+                </p>
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
