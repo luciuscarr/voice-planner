@@ -42,7 +42,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Routes
 app.use('/api/tasks', taskRoutes);
@@ -97,22 +96,22 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve React app for all non-API routes (only in production)
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+// Health check and root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Voice Planner API Server', 
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      tasks: '/api/tasks',
+      calendar: '/api/calendar'
+    }
   });
-} else {
-  // In development, just serve a simple message for non-API routes
-  app.get('*', (req, res) => {
-    res.json({ 
-      message: 'Voice Planner API Server', 
-      status: 'running',
-      frontend: 'Run "cd client && npm run dev" to start the React frontend',
-      api: `http://localhost:${PORT}/api`
-    });
-  });
-}
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
 
 // Initialize database and start server
 async function startServer() {
