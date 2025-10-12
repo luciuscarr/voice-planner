@@ -50,7 +50,12 @@ function App() {
   useState(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     console.log('🔧 API URL:', apiUrl);
+    console.log('🔧 VITE_API_URL:', import.meta.env.VITE_API_URL);
     console.log('🔧 All env vars:', import.meta.env);
+    
+    if (!import.meta.env.VITE_API_URL) {
+      console.error('⚠️ VITE_API_URL is not set! Using localhost fallback.');
+    }
   });
 
   // Handle voice commands
