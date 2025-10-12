@@ -12,6 +12,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Check if Google Calendar is connected
   useEffect(() => {
@@ -35,7 +36,13 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       setIsLoading(true);
       
       // Get authorization URL
-      const response = await fetch('/api/calendar/auth-url');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get auth URL');
+      }
+      
       const { authUrl } = await response.json();
       
       // Open popup window for OAuth
@@ -56,6 +63,8 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
 
     } catch (error) {
       console.error('Error connecting to Google Calendar:', error);
+      setErrorMessage('Calendar integration not available. Set up Google OAuth in backend.');
+      setSyncStatus('error');
       setIsLoading(false);
     }
   };
@@ -71,7 +80,8 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
         return;
       }
 
-      const response = await fetch('/api/calendar/sync-task', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/calendar/sync-task`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,8 +114,10 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       const token = localStorage.getItem('google_access_token');
       if (!token) return;
 
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      
       if (task.calendarEventId) {
-        await fetch(`/api/calendar/events/${task.calendarEventId}?accessToken=${token}`, {
+        await fetch(`${apiUrl}/api/calendar/events/${task.calendarEventId}?accessToken=${token}`, {
           method: 'DELETE',
         });
       }
