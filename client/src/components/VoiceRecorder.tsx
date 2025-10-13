@@ -17,6 +17,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
   const [isProcessing, setIsProcessing] = useState(false);
   const [useAI, setUseAI] = useState(true);
   const [aiAvailable, setAiAvailable] = useState(false);
+  const aiAvailableRef = React.useRef(false);
 
   // Check AI availability on mount
   useEffect(() => {
@@ -24,6 +25,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
     checkAIStatus().then(available => {
       console.log('✅ AI Available:', available);
       setAiAvailable(available);
+      aiAvailableRef.current = available;
       if (!available) {
         console.warn('⚠️ AI parsing not available, using fallback parser');
       } else {
@@ -32,6 +34,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
     }).catch(error => {
       console.error('❌ Error checking AI status:', error);
       setAiAvailable(false);
+      aiAvailableRef.current = false;
     });
   }, []);
 
@@ -46,9 +49,9 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
         try {
           // Use AI parsing if available and enabled, otherwise use regex-based parsing
           console.log('🎤 Parsing transcript:', result.transcript);
-          console.log('🤖 AI Available:', aiAvailable, 'Use AI:', useAI);
+          console.log('🤖 AI Available (state):', aiAvailable, 'AI Available (ref):', aiAvailableRef.current, 'Use AI:', useAI);
           
-          const command = (useAI && aiAvailable) 
+          const command = (useAI && aiAvailableRef.current) 
             ? await parseIntentAI(result.transcript)
             : parseIntent(result.transcript);
           
