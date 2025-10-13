@@ -84,7 +84,7 @@ Return ONLY valid JSON, no markdown or additional text.`
           content: transcript
         }
       ],
-      temperature: 0.3, // Lower temperature for more consistent parsing
+      temperature: 0.2, // Lower temperature for deterministic formatting
       response_format: { type: "json_object" }
     });
 

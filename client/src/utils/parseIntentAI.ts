@@ -32,9 +32,42 @@ export async function parseIntentAI(transcript: string): Promise<VoiceCommand | 
 
     const result = await response.json();
     
+    // Normalize AI output to ensure date/time fields exist and avoid server dueDate timezone skew
+    const normalize = (cmd: VoiceCommand): VoiceCommand => {
+      const ed = cmd.extractedData || {};
+      let date = ed.date;
+      let time = ed.time;
+      
+      // If only dueDate is present, derive local date/time from it
+      if ((!date || !time) && ed.dueDate) {
+        const d = new Date(ed.dueDate);
+        if (!isNaN(d.getTime())) {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          const hh = String(d.getHours()).padStart(2, '0');
+          const mi = String(d.getMinutes()).padStart(2, '0');
+          date = date || `${yyyy}-${mm}-${dd}`;
+          time = time || `${hh}:${mi}`;
+        }
+      }
+      
+      return {
+        ...cmd,
+        extractedData: {
+          ...ed,
+          date,
+          time
+        }
+      };
+    };
+    
     // The API returns { success: true, data: VoiceCommand[] | VoiceCommand }
     if (result.success && result.data) {
-      return result.data;
+      if (Array.isArray(result.data)) {
+        return result.data.map(normalize);
+      }
+      return normalize(result.data);
     }
     
     throw new Error('Invalid response from AI parser');

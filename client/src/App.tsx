@@ -118,6 +118,7 @@ function App() {
                   minutes = m || 0;
                 }
                 
+                // Create local date from components to preserve user's timezone
                 const local = new Date(year, monthIndex, day, hours, minutes, 0, 0);
                 return local.toISOString();
               }
