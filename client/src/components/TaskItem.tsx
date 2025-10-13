@@ -36,10 +36,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
 
   const formatDueDate = (dateString: string) => {
     const date = new Date(dateString);
-    if (isToday(date)) return 'Today';
-    if (isTomorrow(date)) return 'Tomorrow';
-    if (isThisWeek(date)) return format(date, 'EEEE');
-    return format(date, 'MMM d');
+    const dateLabel = isToday(date)
+      ? 'Today'
+      : isTomorrow(date)
+        ? 'Tomorrow'
+        : isThisWeek(date)
+          ? format(date, 'EEEE')
+          : format(date, 'MMM d');
+
+    const timeLabel = format(date, 'h:mm a');
+    // Only show time if it is not midnight (meaning a time was likely specified)
+    const showTime = !(date.getHours() === 0 && date.getMinutes() === 0);
+    return showTime ? `${dateLabel} • ${timeLabel}` : dateLabel;
   };
 
   const getPriorityColor = (priority: Task['priority']) => {

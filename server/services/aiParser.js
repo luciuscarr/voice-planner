@@ -25,17 +25,19 @@ async function parseVoiceCommand(transcript) {
 Current date/time: ${currentDateTime}
 Current day: ${currentDay}
 
-Parse the user's voice command and return a JSON object with the following structure:
+Parse the user's voice command and return a JSON object with the following STRICT structure and formatting (return JSON only):
 {
   "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
-  "confidence": 0.0 to 1.0,
+  "confidence": number, // 0.0 to 1.0
   "extractedData": {
-    "title": "cleaned task title without command words or time references",
-    "dueDate": "ISO 8601 date string if mentioned, null otherwise",
+    "title": string, // cleaned title without command words/time phrases
+    "dueDate": string | null, // ISO 8601 if exact datetime resolved, else null
+    "date": string | null, // YYYY-MM-DD if a calendar date is mentioned
+    "time": string | null, // HH:mm (24-hour) if a specific time is mentioned
     "priority": "low" | "medium" | "high",
     "timePreference": "morning" | "afternoon" | "evening" | null,
-    "duration": minutes as number or null,
-    "description": "additional details if mentioned"
+    "duration": number | null, // minutes
+    "description": string | null
   }
 }
 
@@ -65,6 +67,13 @@ Time parsing rules:
 - "afternoon" → 2:00 PM if no specific time
 - "evening" → 6:00 PM if no specific time
 
+Formatting rules:
+- If a specific calendar date is inferred/mentioned, set extractedData.date as YYYY-MM-DD (local).
+- If a specific clock time is inferred/mentioned, set extractedData.time as HH:mm (24-hour).
+- If both date and time are present, set extractedData.dueDate to the combined ISO datetime.
+- If only date or time is present, set dueDate to the best-effort ISO using today/tomorrow context, but still populate date/time fields when relevant.
+
+Multiple commands:
 If multiple tasks are mentioned (separated by "and", "also", commas), only parse the FIRST one and set a flag "hasMultipleTasks": true.
 
 Return ONLY valid JSON, no markdown or additional text.`

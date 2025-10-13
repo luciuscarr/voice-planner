@@ -86,7 +86,22 @@ function App() {
             description: cmd.intent === 'note' ? 'Voice note' : undefined,
             completed: false,
             priority: cmd.extractedData?.priority || 'medium',
-            dueDate: cmd.extractedData?.dueDate,
+            // Prefer combined ISO dueDate; if absent, try to compose from separate date/time
+            dueDate: (() => {
+              const due = cmd.extractedData?.dueDate;
+              const date = cmd.extractedData?.date;
+              const time = cmd.extractedData?.time;
+              if (due) return due;
+              if (date || time) {
+                const base = date ? new Date(date) : new Date();
+                if (time) {
+                  const [h, m] = time.split(':').map(Number);
+                  base.setHours(h || 0, m || 0, 0, 0);
+                }
+                return base.toISOString();
+              }
+              return undefined;
+            })(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };

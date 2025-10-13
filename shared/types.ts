@@ -16,6 +16,11 @@ export interface VoiceCommand {
   extractedData?: {
     title?: string;
     dueDate?: string;
+    // Normalized fields for guaranteed formatting
+    // date in YYYY-MM-DD (local) if provided by AI
+    date?: string;
+    // time in HH:mm (24h) if provided by AI
+    time?: string;
     priority?: 'low' | 'medium' | 'high';
     timePreference?: 'morning' | 'afternoon' | 'evening';
     duration?: number;
