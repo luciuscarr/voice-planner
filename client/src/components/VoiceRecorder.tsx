@@ -20,11 +20,18 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
 
   // Check AI availability on mount
   useEffect(() => {
+    console.log('🔍 Checking AI availability...');
     checkAIStatus().then(available => {
+      console.log('✅ AI Available:', available);
       setAiAvailable(available);
       if (!available) {
-        console.warn('AI parsing not available, using fallback parser');
+        console.warn('⚠️ AI parsing not available, using fallback parser');
+      } else {
+        console.log('🤖 AI parsing enabled!');
       }
+    }).catch(error => {
+      console.error('❌ Error checking AI status:', error);
+      setAiAvailable(false);
     });
   }, []);
 
@@ -38,13 +45,17 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
         
         try {
           // Use AI parsing if available and enabled, otherwise use regex-based parsing
+          console.log('🎤 Parsing transcript:', result.transcript);
+          console.log('🤖 AI Available:', aiAvailable, 'Use AI:', useAI);
+          
           const command = (useAI && aiAvailable) 
             ? await parseIntentAI(result.transcript)
             : parseIntent(result.transcript);
           
+          console.log('📊 Parsed command:', command);
           onCommand(command);
         } catch (error) {
-          console.error('Error parsing command:', error);
+          console.error('❌ Error parsing command:', error);
           // Fallback to basic parsing on error
           const command = parseIntent(result.transcript);
           onCommand(command);

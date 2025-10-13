@@ -9,6 +9,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
  */
 export async function parseIntentAI(transcript: string): Promise<VoiceCommand | VoiceCommand[]> {
   try {
+    console.log('🚀 Calling AI parser at:', `${API_URL}/api/ai/parse`);
+    console.log('📝 Transcript:', transcript);
+    
     const response = await fetch(`${API_URL}/api/ai/parse`, {
       method: 'POST',
       headers: {
@@ -19,6 +22,8 @@ export async function parseIntentAI(transcript: string): Promise<VoiceCommand | 
         multipleCommands: true
       })
     });
+    
+    console.log('📡 Response status:', response.status);
 
     if (!response.ok) {
       const error = await response.json();
