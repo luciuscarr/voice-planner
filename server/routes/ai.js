@@ -9,7 +9,7 @@ const { parseVoiceCommand, parseMultipleCommands } = require('../services/aiPars
  */
 router.post('/parse', async (req, res) => {
   try {
-    const { transcript, multipleCommands = true } = req.body;
+    const { transcript, multipleCommands = true, timeZone, offsetMinutes } = req.body;
     
     if (!transcript || typeof transcript !== 'string') {
       return res.status(400).json({ 
@@ -26,11 +26,14 @@ router.post('/parse', async (req, res) => {
       });
     }
 
+    // Attach client timezone context to transcript for better weekday resolution
+    const tzHint = timeZone ? ` [UserTimeZone:${timeZone}]` : offsetMinutes !== undefined ? ` [UserOffsetMinutes:${offsetMinutes}]` : '';
+
     let result;
     if (multipleCommands) {
-      result = await parseMultipleCommands(transcript);
+      result = await parseMultipleCommands(`${transcript}${tzHint}`);
     } else {
-      result = await parseVoiceCommand(transcript);
+      result = await parseVoiceCommand(`${transcript}${tzHint}`);
     }
     
     res.json({

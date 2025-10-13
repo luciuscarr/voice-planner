@@ -9,6 +9,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
  */
 export async function parseIntentAI(transcript: string): Promise<VoiceCommand | VoiceCommand[]> {
   try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offsetMinutes = -new Date().getTimezoneOffset();
     console.log('🚀 Calling AI parser at:', `${API_URL}/api/ai/parse`);
     console.log('📝 Transcript:', transcript);
     
@@ -19,7 +21,9 @@ export async function parseIntentAI(transcript: string): Promise<VoiceCommand | 
       },
       body: JSON.stringify({
         transcript,
-        multipleCommands: true
+        multipleCommands: true,
+        timeZone,
+        offsetMinutes
       })
     });
     

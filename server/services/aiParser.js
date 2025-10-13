@@ -12,8 +12,9 @@ const openai = new OpenAI({
  */
 async function parseVoiceCommand(transcript) {
   try {
-    const currentDateTime = new Date().toISOString();
-    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const now = new Date();
+    const currentDateTime = now.toISOString();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
     
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini", // Using GPT-4o-mini for cost efficiency
@@ -22,8 +23,10 @@ async function parseVoiceCommand(transcript) {
           role: "system",
           content: `You are a voice command parser for a task planning application. Your job is to understand natural language commands and extract structured data.
 
-Current date/time: ${currentDateTime}
-Current day: ${currentDay}
+Current date/time (UTC ISO): ${currentDateTime}
+Current day (user-local may differ): ${currentDay}
+
+If the user message contains hints like [UserTimeZone:America/Los_Angeles] or [UserOffsetMinutes:-420], interpret weekday names (e.g., "Thursday") against that user timezone.
 
 Parse the user's voice command and return a JSON object with the following STRICT structure and formatting (return JSON only):
 {
@@ -60,7 +63,7 @@ Time parsing rules:
 - "today" → today's date
 - "tomorrow" → tomorrow's date
 - "next week" → 7 days from now
-- "monday", "tuesday", etc → next occurrence of that day
+- "monday", "tuesday", etc → next occurrence of that day in the user's timezone context
 - "at 3pm", "at 3 o'clock" → include specific time
 - "in 2 hours", "in 30 minutes" → relative time from now
 - "morning" → 9:00 AM if no specific time
