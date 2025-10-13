@@ -34,8 +34,14 @@ const TIME_PATTERNS = {
   tomorrow: /\b(tomorrow|next day)\b/i,
   thisWeek: /\b(this week|weekend|saturday|sunday)\b/i,
   nextWeek: /\b(next week|following week)\b/i,
-  specificTime: /\b(at|@)\s+(\d{1,2}):?(\d{2})?\s*(am|pm)?\b/i,
+  specificTime: /\b(at|@)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:?\d{2}|:\d{2})?\s*(am|pm|o'clock|oclock)?\b/i,
   relativeTime: /\b(in|after)\s+(\d+)\s+(minute|hour|day|week)s?\b/i
+};
+
+// Map word numbers to digits for time parsing
+const WORD_TO_NUMBER: { [key: string]: number } = {
+  'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6,
+  'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12
 };
 
 // Split transcript into multiple tasks if separated by keywords
@@ -103,11 +109,12 @@ function parseSingleTask(transcript: string): VoiceCommand {
   
   // Remove time and date phrases from title (they'll be in dueDate)
   const timePhrases = [
-    /\bat\s+\d{1,2}:?\d{0,2}\s*(am|pm)?\b/gi,
+    /\bat\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:?\d{0,2})?\s*(am|pm|o'clock|oclock)?\b/gi,
     /\btomorrow\b/gi,
     /\btoday\b/gi,
     /\bnext\s+\w+\b/gi,
-    /\bthis\s+\w+\b/gi
+    /\bthis\s+\w+\b/gi,
+    /\bfor\s+$/gi  // Remove trailing "for" that might be left over
   ];
   
   timePhrases.forEach(phrase => {
@@ -145,14 +152,21 @@ function parseSingleTask(transcript: string): VoiceCommand {
   // Then, check for specific time
   const timeMatch = transcript.match(TIME_PATTERNS.specificTime);
   if (timeMatch) {
-    const timeDetails = timeMatch[0].match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
+    const timeDetails = timeMatch[0].match(/(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:?\d{2}|:\d{2})?\s*(am|pm|o'clock|oclock)?/i);
     if (timeDetails) {
-      let hours = parseInt(timeDetails[1]);
-      const minutes = timeDetails[2] ? parseInt(timeDetails[2]) : 0;
-      const ampm = timeDetails[3]?.toLowerCase();
+      // Convert word to number if needed
+      const hourStr = timeDetails[1].toLowerCase();
+      let hours = isNaN(parseInt(hourStr)) ? (WORD_TO_NUMBER[hourStr] || 0) : parseInt(hourStr);
       
+      const minuteMatch = timeDetails[2];
+      const minutes = minuteMatch ? parseInt(minuteMatch.replace(':', '')) : 0;
+      const ampm = timeDetails[3]?.toLowerCase().replace(/[^a-z]/g, ''); // Remove apostrophes from o'clock
+      
+      // Handle AM/PM conversion
       if (ampm === 'pm' && hours !== 12) hours += 12;
       if (ampm === 'am' && hours === 12) hours = 0;
+      // If no AM/PM specified and hour is between 1-7, assume PM (common for afternoon meetings)
+      if (!ampm && hours >= 1 && hours <= 7) hours += 12;
       
       specificTime = { hours, minutes };
     }
