@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const taskRoutes = require('./routes/tasks');
 const calendarRoutes = require('./routes/calendar');
+const aiRoutes = require('./routes/ai');
 
 // Use production database if DATABASE_URL is set, otherwise use SQLite
 const { initDatabase } = process.env.DATABASE_URL 
@@ -48,6 +49,7 @@ app.use(express.json());
 // Routes
 app.use('/api/tasks', taskRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

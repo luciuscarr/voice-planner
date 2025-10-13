@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Square } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { parseIntentAI, checkAIStatus } from '../utils/parseIntentAI';
 import { parseIntent } from '../utils/parseIntent';
 import { VoiceCommand } from '@shared/types';
 
@@ -14,16 +15,40 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [useAI, setUseAI] = useState(true);
+  const [aiAvailable, setAiAvailable] = useState(false);
+
+  // Check AI availability on mount
+  useEffect(() => {
+    checkAIStatus().then(available => {
+      setAiAvailable(available);
+      if (!available) {
+        console.warn('AI parsing not available, using fallback parser');
+      }
+    });
+  }, []);
 
   const { isSupported, startListening, stopListening, reset } = useSpeechRecognition({
-    onResult: (result) => {
+    onResult: async (result) => {
       setTranscript(result.transcript);
       onTranscription(result.transcript);
       
       if (result.isFinal) {
         setIsProcessing(true);
-        const command = parseIntent(result.transcript);
-        onCommand(command);
+        
+        try {
+          // Use AI parsing if available and enabled, otherwise use regex-based parsing
+          const command = (useAI && aiAvailable) 
+            ? await parseIntentAI(result.transcript)
+            : parseIntent(result.transcript);
+          
+          onCommand(command);
+        } catch (error) {
+          console.error('Error parsing command:', error);
+          // Fallback to basic parsing on error
+          const command = parseIntent(result.transcript);
+          onCommand(command);
+        }
         
         // Reset after processing
         setTimeout(() => {
@@ -117,9 +142,16 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <p className="text-sm text-gray-600 mb-2">
-          {isProcessing ? 'Processing...' : isRecording ? 'Listening...' : 'Click to start recording'}
-        </p>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <p className="text-sm text-gray-600">
+            {isProcessing ? 'Processing...' : isRecording ? 'Listening...' : 'Click to start recording'}
+          </p>
+          {aiAvailable && (
+            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+              AI Powered
+            </span>
+          )}
+        </div>
         
         {transcript && (
           <motion.div

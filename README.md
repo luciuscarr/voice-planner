@@ -5,6 +5,7 @@ A voice-driven productivity app that lets you record short voice commands, trans
 ## Features
 
 - 🎤 **Voice Input**: Use Web Speech API to record and transcribe voice commands
+- 🤖 **AI-Powered Parsing**: OpenAI GPT-4o-mini for accurate natural language understanding
 - 🧠 **Intent Recognition**: Automatically detects task, reminder, note, and schedule intents
 - ⚡ **Real-time Updates**: Live task synchronization across clients using WebSocket
 - 📱 **Modern UI**: Clean, responsive interface with smooth animations
@@ -26,6 +27,7 @@ A voice-driven productivity app that lets you record short voice commands, trans
 - **Node.js** with Express
 - **Socket.io** for WebSocket communication
 - **SQLite/PostgreSQL** for database
+- **OpenAI API** for AI-powered intent parsing
 - **CORS** enabled for cross-origin requests
 
 ## Quick Start
@@ -47,7 +49,13 @@ A voice-driven productivity app that lets you record short voice commands, trans
    ```bash
    cp env.example .env
    ```
-   Edit `.env` with your configuration if needed.
+   Edit `.env` and add your OpenAI API key for AI-powered parsing:
+   ```env
+   OPENAI_API_KEY=sk-your-api-key-here
+   ```
+   Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+   
+   See [AI_SETUP.md](./AI_SETUP.md) for detailed AI setup instructions.
 
 3. **Initialize the database:**
    ```bash
@@ -85,12 +93,18 @@ npm run dev
 
 ### Voice Commands
 
-The app recognizes natural language voice commands. Try these examples:
+The app uses **AI-powered natural language understanding** to parse your voice commands with high accuracy. Try these examples:
 
 - **"Add meeting with Alex tomorrow at 3pm"** - Creates a scheduled task
-- **"Remind me to call the dentist"** - Creates a reminder
+- **"Remind me to call the dentist"** - Creates a reminder  
 - **"Note: Project deadline is Friday"** - Creates a high-priority note
 - **"Schedule team standup for next Monday"** - Creates a scheduled task
+- **"Buy milk and walk the dog tomorrow"** - Creates two separate tasks
+
+The AI understands natural variations like:
+- "Don't forget to..." / "I need to..." / "Make sure I..."
+- "Next Tuesday at 3" / "3pm next Tuesday" / "Tuesday 3 o'clock"
+- "Urgent meeting" / "Low priority task" / "When you have time"
 
 ### Supported Intents
 
@@ -128,6 +142,10 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions to Ver
 - `DELETE /api/tasks/:id` - Delete task
 - `PATCH /api/tasks/:id/toggle` - Toggle task completion
 
+### AI Parsing
+- `POST /api/ai/parse` - Parse voice transcript using AI
+- `GET /api/ai/status` - Check AI service availability
+
 ### WebSocket Events
 - `voice_command` - Send voice command for processing
 - `task_created` - Broadcast new task to all clients
@@ -142,14 +160,16 @@ voice-planner/
 │   ├── src/
 │   │   ├── components/    # React components
 │   │   ├── hooks/         # Custom hooks
-│   │   ├── utils/         # Utility functions
+│   │   ├── utils/         # Utility functions (includes AI parser)
 │   │   └── App.tsx        # Main app component
 │   └── package.json
 ├── server/                # Express backend
 │   ├── routes/            # API routes
+│   ├── services/          # Business logic (AI parser)
 │   ├── db/               # Database files
 │   └── app.js            # Server entry point
 ├── shared/               # Shared types
+├── AI_SETUP.md           # AI configuration guide
 └── README.md
 ```
 
@@ -199,13 +219,22 @@ CREATE TABLE tasks (
 - Check firewall settings
 - Ensure CORS is properly configured
 
+## Security
+
+🔒 API keys and secrets are protected via `.gitignore`. See [SECURITY.md](./SECURITY.md) for:
+- How to keep your OpenAI API key safe
+- What to do if you accidentally expose a key  
+- Production deployment security best practices
+- Security checklist before publishing
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Test thoroughly
-5. Submit a pull request
+5. **Never commit `.env` files** (see SECURITY.md)
+6. Submit a pull request
 
 ## License
 
