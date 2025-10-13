@@ -108,7 +108,8 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       tasks: '/api/tasks',
-      calendar: '/api/calendar'
+      calendar: '/api/calendar',
+      ai: '/api/ai'
     }
   });
 });
