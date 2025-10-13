@@ -125,7 +125,7 @@ async function parseMultipleCommands(transcript) {
     
     if (response.hasMultipleTasks) {
       // Split the transcript intelligently and parse each one
-      const separators = [', and ', ' and then ', ' also ', ' plus '];
+      const separators = [', and ', ' and then ', ' also ', ' plus ', ' and ', ', ', ' & ', ' then '];
       let parts = [transcript];
       
       for (const separator of separators) {
@@ -139,10 +139,33 @@ async function parseMultipleCommands(transcript) {
         }
         parts = newParts;
       }
-      
+
+      // Derive a base noun (e.g., "appointment", "meeting") if present
+      const baseNounMatch = transcript.match(/\b(appointment|meeting|reminder|note|task|event)\b/i);
+      const baseNoun = baseNounMatch ? baseNounMatch[1] : null;
+
+      // Normalize parts: if a part is context-dependent (e.g., starts with "another" or only has time/date),
+      // prepend the base noun and a command word to improve parsing.
+      const normalizedParts = parts
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .map((p, idx) => {
+          let text = p;
+          const lower = p.toLowerCase();
+          const hasCommandWord = /(add|create|make|schedule|remind|note|delete|remove|cancel|complete)\b/i.test(lower);
+          const startsContextual = /^(another|on\s+\w+day|on\s+\w+|at\s+\d|tomorrow|today|next\s+\w+)/i.test(lower);
+          if (startsContextual && baseNoun) {
+            text = `${baseNoun} ${p}`;
+          }
+          if (!hasCommandWord) {
+            text = `add ${text}`;
+          }
+          return text.trim();
+        });
+
       // Parse each part
       const parsedCommands = await Promise.all(
-        parts.filter(p => p.trim().length > 0).map(part => parseVoiceCommand(part.trim()))
+        normalizedParts.map(part => parseVoiceCommand(part))
       );
       
       return parsedCommands;
