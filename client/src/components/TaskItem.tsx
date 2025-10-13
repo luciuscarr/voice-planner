@@ -35,6 +35,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
   };
 
   const formatDueDate = (dateString: string) => {
+    // dateString is ISO; convert to user's local time for display
     const date = new Date(dateString);
     const dateLabel = isToday(date)
       ? 'Today'

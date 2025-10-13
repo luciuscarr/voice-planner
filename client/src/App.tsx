@@ -86,20 +86,44 @@ function App() {
             description: cmd.intent === 'note' ? 'Voice note' : undefined,
             completed: false,
             priority: cmd.extractedData?.priority || 'medium',
-            // Prefer combined ISO dueDate; if absent, try to compose from separate date/time
+            // Build dueDate in user's LOCAL timezone from AI's date/time when available
             dueDate: (() => {
               const due = cmd.extractedData?.dueDate;
-              const date = cmd.extractedData?.date;
-              const time = cmd.extractedData?.time;
-              if (due) return due;
+              const date = cmd.extractedData?.date; // YYYY-MM-DD
+              const time = cmd.extractedData?.time; // HH:mm (24h)
+              
+              // Prefer composing from date/time to avoid server timezone skew
               if (date || time) {
-                const base = date ? new Date(date) : new Date();
+                const now = new Date();
+                let year: number;
+                let monthIndex: number;
+                let day: number;
+                
+                if (date) {
+                  const [y, mo, d] = date.split('-').map(Number);
+                  year = y;
+                  monthIndex = (mo || 1) - 1;
+                  day = d || 1;
+                } else {
+                  year = now.getFullYear();
+                  monthIndex = now.getMonth();
+                  day = now.getDate();
+                }
+                
+                let hours = 0;
+                let minutes = 0;
                 if (time) {
                   const [h, m] = time.split(':').map(Number);
-                  base.setHours(h || 0, m || 0, 0, 0);
+                  hours = h || 0;
+                  minutes = m || 0;
                 }
-                return base.toISOString();
+                
+                const local = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+                return local.toISOString();
               }
+              
+              // Fallback to server-provided dueDate if no structured fields
+              if (due) return due;
               return undefined;
             })(),
             createdAt: new Date().toISOString(),
