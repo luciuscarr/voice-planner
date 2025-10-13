@@ -34,7 +34,7 @@ const TIME_PATTERNS = {
   tomorrow: /\b(tomorrow|next day)\b/i,
   thisWeek: /\b(this week|weekend|saturday|sunday)\b/i,
   nextWeek: /\b(next week|following week)\b/i,
-  specificTime: /\b(at|@)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:?\d{2}|:\d{2})?\s*(am|pm|o'clock|oclock)?\b/i,
+  specificTime: /\b(at|@)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:\d{2})?\s*(am|pm|o'clock|oclock)?\b/i,
   relativeTime: /\b(in|after)\s+(\d+)\s+(minute|hour|day|week)s?\b/i
 };
 
@@ -109,12 +109,12 @@ function parseSingleTask(transcript: string): VoiceCommand {
   
   // Remove time and date phrases from title (they'll be in dueDate)
   const timePhrases = [
-    /\bat\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:?\d{0,2})?\s*(am|pm|o'clock|oclock)?\b/gi,
+    /\bat\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:\d{2})?\s*(am|pm|o'clock|oclock)?\b/gi,
     /\btomorrow\b/gi,
     /\btoday\b/gi,
     /\bnext\s+\w+\b/gi,
     /\bthis\s+\w+\b/gi,
-    /\bfor\s+$/gi  // Remove trailing "for" that might be left over
+    /\bfor\s+\b/gi  // Remove "for" that might be left over
   ];
   
   timePhrases.forEach(phrase => {
@@ -152,7 +152,7 @@ function parseSingleTask(transcript: string): VoiceCommand {
   // Then, check for specific time
   const timeMatch = transcript.match(TIME_PATTERNS.specificTime);
   if (timeMatch) {
-    const timeDetails = timeMatch[0].match(/(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:?\d{2}|:\d{2})?\s*(am|pm|o'clock|oclock)?/i);
+    const timeDetails = timeMatch[0].match(/(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(:\d{2})?\s*(am|pm|o'clock|oclock)?/i);
     if (timeDetails) {
       // Convert word to number if needed
       const hourStr = timeDetails[1].toLowerCase();
