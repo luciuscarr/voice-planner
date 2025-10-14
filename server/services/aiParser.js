@@ -5,6 +5,38 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Fallback: extract reminder offsets like "30 minutes and an hour before"
+function extractReminderOffsets(text) {
+  const lower = text.toLowerCase();
+  if (!/(before|beforehand)/.test(lower)) return [];
+
+  const mins = [];
+  // e.g., "30 minutes", "45 min"
+  const minuteMatches = lower.match(/(\d{1,3})\s*(minute|minutes|min)\b/g);
+  if (minuteMatches) {
+    for (const m of minuteMatches) {
+      const num = parseInt(m);
+      if (!isNaN(num)) mins.push(num);
+    }
+  }
+  // e.g., "an hour", "1 hour", "2 hours"
+  const hourMatches = lower.match(/(an|a|\d{1,2})\s*(hour|hours|hr|hrs)\b/g);
+  if (hourMatches) {
+    for (const m of hourMatches) {
+      const n = m.startsWith('an') || m.startsWith('a') ? 1 : parseInt(m);
+      const num = isNaN(n) ? null : n * 60;
+      if (num) mins.push(num);
+    }
+  }
+  // common phrases
+  if (/half an hour/.test(lower)) mins.push(30);
+  if (/quarter of an hour|quarter hour/.test(lower)) mins.push(15);
+
+  // de-duplicate and sort descending (longer first or arbitrary)
+  const unique = Array.from(new Set(mins));
+  return unique.sort((a, b) => b - a);
+}
+
 /**
  * Parse voice command using OpenAI's GPT model
  * @param {string} transcript - The voice transcript to parse
@@ -181,9 +213,30 @@ async function parseMultipleCommands(transcript) {
     });
 
     // Parse each part independently via AI
-    const parsedCommands = await Promise.all(
+    let parsedCommands = await Promise.all(
       normalizedParts.map(part => parseVoiceCommand(part))
     );
+
+    // Fallback: convert reminder-only phrases to applyToLastScheduled with reminders
+    parsedCommands = parsedCommands.map(cmd => {
+      const text = cmd?.text || '';
+      const offsets = extractReminderOffsets(text);
+      const refersToLast = /(for\s+this|for\s+that|this\s+appointment|this\s+meeting|beforehand)/i.test(text);
+      if (offsets.length > 0 && refersToLast) {
+        return {
+          ...cmd,
+          intent: cmd.intent, // unchanged
+          extractedData: {
+            ...(cmd.extractedData || {}),
+            reminders: offsets,
+            applyToLastScheduled: true,
+            // clear misleading title if it's generic like "remind me"
+            title: (cmd.extractedData && cmd.extractedData.title) || undefined
+          }
+        };
+      }
+      return cmd;
+    });
 
     return parsedCommands;
 
