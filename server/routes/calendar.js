@@ -123,6 +123,14 @@ router.post('/sync-task', async (req, res) => {
       colorId: task.priority === 'high' ? '11' : task.priority === 'medium' ? '5' : '10', // Red, Yellow, Green
     };
 
+    // Add Google Calendar reminders if present
+    if (Array.isArray(task.reminders) && task.reminders.length > 0) {
+      event.reminders = {
+        useDefault: false,
+        overrides: task.reminders.map((m) => ({ method: 'popup', minutes: m }))
+      };
+    }
+
     const response = await calendar.events.insert({
       calendarId: 'primary',
       resource: event,
