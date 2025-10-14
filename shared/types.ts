@@ -5,6 +5,8 @@ export interface Task {
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
   dueDate?: string;
+  // Minutes before dueDate when notifications should fire (e.g., [60, 30])
+  reminders?: number[];
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +26,10 @@ export interface VoiceCommand {
     priority?: 'low' | 'medium' | 'high';
     timePreference?: 'morning' | 'afternoon' | 'evening';
     duration?: number;
+    // Minutes before dueDate to notify (e.g., [60, 30])
+    reminders?: number[];
+    // True when command refers to the most recent scheduled item (e.g., "this appointment")
+    applyToLastScheduled?: boolean;
   };
 }
 

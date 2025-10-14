@@ -145,6 +145,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
               </div>
             )}
 
+            {/* Reminders */}
+            {task.reminders && task.reminders.length > 0 && (
+              <div className="flex items-center space-x-1 text-gray-500">
+                <Clock className="w-4 h-4" />
+                <span className="text-xs">
+                  {task.reminders.map((m, i) => (i === 0 ? `${m}m` : `, ${m}m`))}
+                </span>
+              </div>
+            )}
+
             {/* Created Date */}
             <div className="text-xs text-gray-400">
               {format(new Date(task.createdAt), 'MMM d')}

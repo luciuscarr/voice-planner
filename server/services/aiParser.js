@@ -40,7 +40,9 @@ Parse the user's voice command and return a JSON object with the following STRIC
     "priority": "low" | "medium" | "high",
     "timePreference": "morning" | "afternoon" | "evening" | null,
     "duration": number | null, // minutes
-    "description": string | null
+    "description": string | null,
+    "reminders": number[] | null, // minutes before due time to notify (e.g., [60,30])
+    "applyToLastScheduled": boolean | null // true if refers to the most recent scheduled item (e.g., "this appointment")
   }
 }
 
@@ -60,6 +62,10 @@ Priority rules:
 - default → medium
 
 Time parsing rules:
+- Reminder parsing rules:
+- Phrases like "remind me 30 minutes before", "notify me an hour before" → reminders: [30] or [60]
+- Allow multiple reminders: "30 minutes and an hour before" → [30, 60]
+- "this appointment" / "that meeting" should set applyToLastScheduled = true
 - "today" → today's date
 - "tomorrow" → tomorrow's date
 - "next week" → 7 days from now

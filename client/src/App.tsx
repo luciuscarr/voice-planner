@@ -43,6 +43,7 @@ const mockTasks: Task[] = [
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [lastScheduledTaskId, setLastScheduledTaskId] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -79,6 +80,12 @@ function App() {
       const newTasks: Task[] = [];
       
       commands.forEach((cmd, index) => {
+        // If this is a reminder-update command that refers to the last scheduled task
+        if (cmd.extractedData?.applyToLastScheduled && cmd.extractedData?.reminders && lastScheduledTaskId) {
+          setTasks(prev => prev.map(t => t.id === lastScheduledTaskId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
+          return;
+        }
+        
         if (cmd.intent === 'task' || cmd.intent === 'reminder' || cmd.intent === 'note' || cmd.intent === 'schedule') {
           const newTask: Task = {
             id: `${Date.now()}-${index}`,
@@ -86,6 +93,7 @@ function App() {
             description: cmd.intent === 'note' ? 'Voice note' : undefined,
             completed: false,
             priority: cmd.extractedData?.priority || 'medium',
+            reminders: cmd.extractedData?.reminders,
             // Build dueDate in user's LOCAL timezone from AI's date/time when available
             dueDate: (() => {
               const due = cmd.extractedData?.dueDate;
@@ -132,6 +140,11 @@ function App() {
           };
           
           newTasks.push(newTask);
+
+          // Track last scheduled item when there is a due date
+          if (newTask.dueDate) {
+            setLastScheduledTaskId(newTask.id);
+          }
         }
       });
       
