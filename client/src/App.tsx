@@ -78,12 +78,14 @@ function App() {
     // Process regular task commands
     setTimeout(() => {
       const newTasks: Task[] = [];
+      // Keep a batch-local pointer so multi-part utterances can reference earlier item in same batch
+      let batchLastScheduledId: string | null = lastScheduledTaskId;
       
       commands.forEach((cmd, index) => {
-        // If this is a reminder-update command that refers to the last scheduled task
+        // If this is a reminder-update command that refers to the last scheduled task (batch-local first)
         if ((cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text))
-            && cmd.extractedData?.reminders && lastScheduledTaskId) {
-          setTasks(prev => prev.map(t => t.id === lastScheduledTaskId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
+            && cmd.extractedData?.reminders && batchLastScheduledId) {
+          setTasks(prev => prev.map(t => t.id === batchLastScheduledId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
           return;
         }
         
@@ -142,15 +144,19 @@ function App() {
           
           newTasks.push(newTask);
 
-          // Track last scheduled item when there is a due date
+          // Track last scheduled item when there is a due date (batch-local)
           if (newTask.dueDate) {
-            setLastScheduledTaskId(newTask.id);
+            batchLastScheduledId = newTask.id;
           }
         }
       });
       
       if (newTasks.length > 0) {
         setTasks(prev => [...newTasks, ...prev]);
+        // Persist batch-local pointer globally
+        if (batchLastScheduledId) {
+          setLastScheduledTaskId(batchLastScheduledId);
+        }
         
         // Show success message
         if (newTasks.length > 1) {
