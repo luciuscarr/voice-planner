@@ -81,7 +81,8 @@ function App() {
       
       commands.forEach((cmd, index) => {
         // If this is a reminder-update command that refers to the last scheduled task
-        if (cmd.extractedData?.applyToLastScheduled && cmd.extractedData?.reminders && lastScheduledTaskId) {
+        if ((cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text))
+            && cmd.extractedData?.reminders && lastScheduledTaskId) {
           setTasks(prev => prev.map(t => t.id === lastScheduledTaskId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
           return;
         }

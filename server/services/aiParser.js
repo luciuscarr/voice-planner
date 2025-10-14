@@ -8,7 +8,6 @@ const openai = new OpenAI({
 // Fallback: extract reminder offsets like "30 minutes and an hour before"
 function extractReminderOffsets(text) {
   const lower = text.toLowerCase();
-  if (!/(before|beforehand)/.test(lower)) return [];
 
   const mins = [];
   // e.g., "30 minutes", "45 min"
@@ -221,7 +220,7 @@ async function parseMultipleCommands(transcript) {
     parsedCommands = parsedCommands.map(cmd => {
       const text = cmd?.text || '';
       const offsets = extractReminderOffsets(text);
-      const refersToLast = /(for\s+this|for\s+that|this\s+appointment|this\s+meeting|beforehand)/i.test(text);
+      const refersToLast = /(for\s+this|for\s+that|this\s+appointment|this\s+meeting|beforehand|before|remind\s+me)/i.test(text);
       if (offsets.length > 0 && refersToLast) {
         return {
           ...cmd,
