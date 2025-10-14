@@ -5,6 +5,7 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { parseIntentAI, checkAIStatus } from '../utils/parseIntentAI';
 import { parseIntent } from '../utils/parseIntent';
 import { VoiceCommand } from '@shared/types';
+import { transcribeFallback } from '../utils/transcribeFallback';
 
 interface VoiceRecorderProps {
   onCommand: (command: VoiceCommand | VoiceCommand[]) => void;
@@ -83,8 +84,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
       stopListening();
       setIsRecording(false);
     } else {
-      startListening();
-      setIsRecording(true);
+      if (isSupported) {
+        startListening();
+        setIsRecording(true);
+      } else {
+        // Fallback: record audio and send to server for transcription
+        startMediaRecorderFallback();
+      }
     }
   };
 
@@ -94,6 +100,44 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
     setIsRecording(false);
     setIsProcessing(false);
   };
+
+  // MediaRecorder fallback for browsers without Web Speech API
+  let mediaRecorder: MediaRecorder | null = null;
+  const chunks: BlobPart[] = [];
+  async function startMediaRecorderFallback() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+      mediaRecorder.onstop = async () => {
+        setIsProcessing(true);
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        try {
+          const text = await transcribeFallback(blob);
+          setTranscript(text);
+          onTranscription(text);
+          const command = (useAI && aiAvailable) ? await parseIntentAI(text) : parseIntent(text);
+          onCommand(command);
+        } catch (e) {
+          console.error('Transcription fallback error', e);
+        } finally {
+          setIsProcessing(false);
+          setTranscript('');
+        }
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+      // Auto stop after 10s to avoid long recordings
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+        setIsRecording(false);
+      }, 10000);
+    } catch (e) {
+      console.error('MediaRecorder not available', e);
+    }
+  }
 
   if (!isSupported) {
     return (
