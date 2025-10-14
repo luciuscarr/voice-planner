@@ -80,12 +80,18 @@ function App() {
       const newTasks: Task[] = [];
       // Keep a batch-local pointer so multi-part utterances can reference earlier item in same batch
       let batchLastScheduledId: string | null = lastScheduledTaskId;
+      // Capture reminder requests that appear before the task in the same utterance
+      let pendingReminders: number[] | null = null;
       
       commands.forEach((cmd, index) => {
         // If this is a reminder-update command that refers to the last scheduled task (batch-local first)
-        if ((cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text))
-            && cmd.extractedData?.reminders && batchLastScheduledId) {
-          setTasks(prev => prev.map(t => t.id === batchLastScheduledId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
+        if ((cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text)) && cmd.extractedData?.reminders) {
+          if (batchLastScheduledId) {
+            setTasks(prev => prev.map(t => t.id === batchLastScheduledId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
+          } else {
+            // No task created yet in this batch; hold onto reminders to apply to the next scheduled task created now
+            pendingReminders = cmd.extractedData.reminders;
+          }
           return;
         }
         
@@ -96,7 +102,13 @@ function App() {
             description: cmd.intent === 'note' ? 'Voice note' : undefined,
             completed: false,
             priority: cmd.extractedData?.priority || 'medium',
-            reminders: cmd.extractedData?.reminders,
+            // Merge any pending reminders captured earlier in this utterance with reminders on this command
+            reminders: (() => {
+              const r1 = cmd.extractedData?.reminders || [];
+              const r2 = pendingReminders || [];
+              const merged = Array.from(new Set([...r1, ...r2]));
+              return merged.length > 0 ? merged : undefined;
+            })(),
             // Build dueDate in user's LOCAL timezone from AI's date/time when available
             dueDate: (() => {
               const due = cmd.extractedData?.dueDate;
@@ -147,6 +159,8 @@ function App() {
           // Track last scheduled item when there is a due date (batch-local)
           if (newTask.dueDate) {
             batchLastScheduledId = newTask.id;
+            // Clear pending reminders after applying to the created task
+            pendingReminders = null;
           }
         }
       });

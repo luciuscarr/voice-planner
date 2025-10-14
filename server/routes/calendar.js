@@ -127,7 +127,9 @@ router.post('/sync-task', async (req, res) => {
     if (Array.isArray(task.reminders) && task.reminders.length > 0) {
       event.reminders = {
         useDefault: false,
-        overrides: task.reminders.map((m) => ({ method: 'popup', minutes: m }))
+        overrides: task.reminders
+          .filter((m) => Number.isFinite(m) && m >= 0)
+          .map((m) => ({ method: 'popup', minutes: m }))
       };
     }
 
