@@ -120,15 +120,110 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
     }
   }, [tasks, onImportTasks]);
 
+  const exportAll = useCallback(async () => {
+    try {
+      let token = localStorage.getItem('google_access_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      if (!token) {
+        const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Failed to start Google auth: ${response.status} - ${errText}`);
+        }
+        const { authUrl } = await response.json();
+        await new Promise<void>((resolve, reject) => {
+          const handler = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'google-calendar-auth') {
+              window.removeEventListener('message', handler);
+              if (event.data.success && event.data.accessToken) {
+                localStorage.setItem('google_access_token', event.data.accessToken);
+                resolve();
+              } else {
+                reject(new Error('Google authentication failed'));
+              }
+            }
+          };
+          window.addEventListener('message', handler);
+          const popup = window.open(authUrl, 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+          const interval = setInterval(() => {
+            if (popup && popup.closed) {
+              clearInterval(interval);
+              window.removeEventListener('message', handler);
+              reject(new Error('Google auth window was closed'));
+            }
+          }, 1000);
+        });
+        token = localStorage.getItem('google_access_token');
+        if (!token) throw new Error('Missing access token after authentication');
+      }
+
+      // Range: today through the next 3 days
+      const start = getStartOfDay(new Date());
+      const end = getEndOfDay(new Date(start));
+      end.setDate(end.getDate() + 3);
+
+      // Export tasks: dueDate within range, not imported (id without ':'), not already synced
+      const eligible = tasks.filter(t => {
+        if (!t.dueDate) return false;
+        const dt = new Date(t.dueDate);
+        if (isNaN(dt.getTime())) return false;
+        if (dt < start || dt > end) return false;
+        if (t.calendarEventId) return false; // already synced
+        if (t.id.includes(':')) return false; // imported item
+        return true;
+      });
+
+      if (eligible.length === 0) {
+        alert('No local items to export in the next 3 days.');
+        return;
+      }
+
+      let success = 0;
+      for (const task of eligible) {
+        const resp = await fetch(`${apiUrl}/api/calendar/sync-task`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task, accessToken: token })
+        });
+        if (resp.ok) {
+          const result = await resp.json();
+          onSync({ ...task, calendarEventId: result.eventId });
+          // If reminders exist, send a patch to ensure overrides persist
+          if (task.reminders && task.reminders.length > 0) {
+            await fetch(`${apiUrl}/api/calendar/sync-task`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ task: { ...task, calendarEventId: result.eventId }, accessToken: token })
+            });
+          }
+          success += 1;
+        }
+      }
+
+      alert(`Exported ${success} item${success === 1 ? '' : 's'} to Google Calendar.`);
+    } catch (e) {
+      console.error('Export error:', e);
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      alert(`Failed to export to Google Calendar. ${msg}`);
+    }
+  }, [tasks, onSync]);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end mb-2">
+      <div className="flex items-center justify-end mb-2 gap-2">
         <button
           onClick={importCalendar}
           className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span>Import from Google</span>
+        </button>
+        <button
+          onClick={exportAll}
+          className="flex items-center space-x-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Export all</span>
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
