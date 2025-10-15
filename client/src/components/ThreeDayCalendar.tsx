@@ -251,7 +251,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
                         )}
                       </div>
                       <div className="shrink-0">
-                        <CalendarSync task={t as any} onSync={onSync as any} onUnsync={onUnsync as any} />
+                        <CalendarSync compact task={t as any} onSync={onSync as any} onUnsync={onUnsync as any} />
                       </div>
                     </div>
                   </div>

@@ -6,9 +6,10 @@ interface CalendarSyncProps {
   task: any;
   onSync: (task: any) => void;
   onUnsync: (taskId: string) => void;
+  compact?: boolean;
 }
 
-export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsync }) => {
+export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsync, compact = false }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
@@ -164,6 +165,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
   };
 
   const getSyncButtonText = () => {
+    if (compact) return '';
     if (isLoading) return 'Syncing...';
     if (syncStatus === 'synced') return 'Synced';
     if (syncStatus === 'error') return 'Retry';
@@ -183,19 +185,36 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
         <motion.button
           onClick={connectGoogleCalendar}
           disabled={isLoading}
-          className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+          title="Connect Google Calendar"
+          aria-label="Connect Google Calendar"
+          className={
+            compact
+              ? 'p-1.5 text-gray-600 hover:text-blue-600 rounded-md transition-colors disabled:opacity-50'
+              : 'flex items-center space-x-2 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50'
+          }
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <Settings className="w-4 h-4" />
-          <span>Connect Google Calendar</span>
+          <Settings className={compact ? 'w-4 h-4' : 'w-4 h-4'} />
+          {!compact && <span>Connect Google Calendar</span>}
         </motion.button>
       ) : (
         <div className="flex items-center space-x-2">
           <motion.button
             onClick={syncStatus === 'synced' ? unsyncFromCalendar : syncToCalendar}
             disabled={isLoading}
-            className={`
+            title={syncStatus === 'synced' ? 'Remove from Calendar' : 'Sync to Calendar'}
+            aria-label={syncStatus === 'synced' ? 'Remove from Calendar' : 'Sync to Calendar'}
+            className={
+              compact
+                ? `p-1.5 rounded-md disabled:opacity-50 transition-colors ${
+                    syncStatus === 'synced'
+                      ? 'text-green-600 hover:text-green-700'
+                      : syncStatus === 'error'
+                      ? 'text-red-600 hover:text-red-700'
+                      : 'text-blue-600 hover:text-blue-700'
+                  }`
+                : `
               flex items-center space-x-2 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-50
               ${syncStatus === 'synced' 
                 ? 'bg-green-500 text-white hover:bg-green-600' 
@@ -203,12 +222,13 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
                 ? 'bg-red-500 text-white hover:bg-red-600'
                 : 'bg-blue-500 text-white hover:bg-blue-600'
               }
-            `}
+            `
+            }
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             {getSyncButtonIcon()}
-            <span>{getSyncButtonText()}</span>
+            {!compact && <span>{getSyncButtonText()}</span>}
           </motion.button>
 
           {syncStatus === 'synced' && (
@@ -216,7 +236,9 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
               href="https://calendar.google.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
+              title="Open Google Calendar"
+              aria-label="Open Google Calendar"
+              className={compact ? 'p-1.5 text-gray-400 hover:text-blue-600 transition-colors' : 'p-1.5 text-gray-400 hover:text-blue-600 transition-colors'}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -227,7 +249,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       )}
 
       <AnimatePresence>
-        {syncStatus === 'synced' && (
+        {syncStatus === 'synced' && !compact && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
