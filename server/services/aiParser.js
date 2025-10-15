@@ -150,6 +150,7 @@ async function parseMultipleCommands(transcript) {
 
     // Fallback: split transcript by common multi-command separators
     const splitIntoParts = (text) => {
+      // 1) Separator words
       const separators = [', and ', ' and then ', ' also ', ' plus ', ' and ', ', ', ' & ', ' then '];
       let parts = [text];
       for (const separator of separators) {
@@ -163,6 +164,29 @@ async function parseMultipleCommands(transcript) {
         }
         parts = newParts;
       }
+
+      // 2) Sentence boundaries (avoid breaking times; split only on punctuation followed by whitespace)
+      // e.g., "... at 2:00 p.m. remind me ..."
+      {
+        const newParts = [];
+        for (const part of parts) {
+          const chunks = part.split(/(?<=[.!?])\s+(?=[A-Za-z])/g);
+          newParts.push(...chunks);
+        }
+        parts = newParts;
+      }
+
+      // 3) Start of a new appointment/meeting/event phrase (e.g., "another appointment", "another meeting")
+      {
+        const newParts = [];
+        for (const part of parts) {
+          // Split BEFORE the keyword so it starts a new fragment
+          const chunks = part.split(/(?=\banother\s+(appointment|meeting|event)\b)/gi);
+          newParts.push(...chunks);
+        }
+        parts = newParts;
+      }
+
       return parts.map(p => p.trim()).filter(p => p.length > 0);
     };
 
