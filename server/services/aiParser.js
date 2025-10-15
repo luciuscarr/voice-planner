@@ -77,6 +77,58 @@ Parse the user's voice command and return a JSON object with the following STRIC
   }
 }
 
+// Ask OpenAI to return an ARRAY of commands in one shot
+async function parseCommandsArray(transcript) {
+  const now = new Date();
+  const currentDateTime = now.toISOString();
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are a voice command parser for a task planning application. Parse the user's full utterance into an ARRAY of structured commands.
+
+Return ONLY valid JSON array, no markdown. The array should contain one object per command, using this strict shape:
+{
+  "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
+  "confidence": number,
+  "extractedData": {
+    "title": string,
+    "dueDate": string | null,
+    "date": string | null,   // YYYY-MM-DD (user local)
+    "time": string | null,   // HH:mm 24h (user local)
+    "priority": "low" | "medium" | "high",
+    "timePreference": "morning" | "afternoon" | "evening" | null,
+    "duration": number | null,
+    "description": string | null,
+    "reminders": number[] | null,            // minutes before due time
+    "applyToLastScheduled": boolean | null   // refers to most recently scheduled item
+  }
+}
+
+Rules:
+- Interpret weekdays and times in user's timezone if provided via hints like [UserTimeZone:..] or [UserOffsetMinutes:..].
+- If multiple tasks are spoken (e.g., "... and ..."), return multiple objects in the array.
+- If only one command is present, still return an array with a single object.
+- Use "schedule" for appointments/meetings. Clean titles (no command words/time phrases).
+- Populate date/time fields when present; set dueDate when datetime is fully known.
+- Extract reminder offsets from phrases like "30 minutes", "an hour", and allow multiples.
+- Return an empty array only if nothing actionable is detected.`
+      },
+      { role: "user", content: transcript }
+    ],
+    temperature: 0.2,
+    response_format: { type: "json_object" }
+  });
+
+  // The model returns a JSON object or array as a string; ensure we get an array
+  const content = completion.choices[0].message.content;
+  const parsed = JSON.parse(content);
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
 Intent definitions:
 - "task": Creating or adding a task/todo item
 - "reminder": Setting a reminder or alert
@@ -160,7 +212,18 @@ Return ONLY valid JSON, no markdown or additional text.`
  */
 async function parseMultipleCommands(transcript) {
   try {
-    // Helper: split transcript by common multi-command separators
+    // First preference: let the model return an ARRAY of commands
+    try {
+      const array = await parseCommandsArray(transcript);
+      if (Array.isArray(array) && array.length > 0) {
+        // Attach original text to each for traceability
+        return array.map(cmd => ({ text: transcript, ...cmd }));
+      }
+    } catch (e) {
+      // fall through to deterministic splitting
+    }
+
+    // Fallback: split transcript by common multi-command separators
     const splitIntoParts = (text) => {
       const separators = [', and ', ' and then ', ' also ', ' plus ', ' and ', ', ', ' & ', ' then '];
       let parts = [text];
