@@ -8,7 +8,7 @@ const INTENT_KEYWORDS = {
   schedule: ['schedule', 'meeting', 'appointment', 'book', 'plan', 'arrange'],
   delete: ['delete', 'remove', 'cancel', 'clear', 'erase'],
   complete: ['done', 'finished', 'completed', 'accomplished', 'check off'],
-  findTime: ['find time', 'find a time', 'when can i', 'free time', 'available time', 'good time']
+  findTime: ['find time', 'find a time', 'when can i', 'free time', 'available time', 'good time', 'look for a time', 'look for time', 'find me a time', 'find some time']
 };
 
 // Separators that indicate multiple tasks

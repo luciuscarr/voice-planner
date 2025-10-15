@@ -109,7 +109,9 @@ function fallbackParse(transcript: string): VoiceCommand {
   let intent: VoiceCommand['intent'] = 'unknown';
   
   // Simple intent detection
-  if (lowerTranscript.includes('add') || lowerTranscript.includes('create') || lowerTranscript.includes('new')) {
+  if (lowerTranscript.includes('find time') || lowerTranscript.includes('find a time') || lowerTranscript.includes('look for a time') || lowerTranscript.includes('look for time') || lowerTranscript.includes('free time') || lowerTranscript.includes('available time')) {
+    intent = 'findTime';
+  } else if (lowerTranscript.includes('add') || lowerTranscript.includes('create') || lowerTranscript.includes('new')) {
     intent = 'task';
   } else if (lowerTranscript.includes('remind') || lowerTranscript.includes('reminder')) {
     intent = 'reminder';

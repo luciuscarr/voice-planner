@@ -220,7 +220,19 @@ function App() {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
       
-      const events = await fetchCalendarEvents(accessToken, startOfDay, endOfDay);
+      // Remote Google events
+      const googleEvents = await fetchCalendarEvents(accessToken, startOfDay, endOfDay);
+      
+      // Local scheduled tasks for that day (treat as busy as well)
+      const localBusy = tasks
+        .filter(t => t.dueDate)
+        .map(t => ({ id: t.id, summary: t.title, start: t.dueDate!, end: new Date(new Date(t.dueDate!).getTime() + 60 * 60 * 1000).toISOString() }))
+        .filter(e => {
+          const s = new Date(e.start);
+          return s >= startOfDay && s <= endOfDay;
+        });
+      
+      const events = [...googleEvents, ...localBusy];
       
       // Find free time slots
       const freeSlots = findFreeTimeSlots(events, date, duration);
@@ -239,7 +251,14 @@ function App() {
       }
       
       // Create a task with the suggested time
-      const taskTitle = command.extractedData?.title || command.text.replace(/find.*time.*to/i, '').trim();
+      const taskTitle = (() => {
+        const explicit = command.extractedData?.title?.trim();
+        if (explicit && explicit.length > 0) return explicit;
+        // Try to extract phrase after "to" or the action word
+        const m = command.text.match(/(?:find|look)\s+(?:.*?\s)?time(?:\s+for|\s+to)?\s+(.*)$/i);
+        if (m && m[1]) return m[1].trim();
+        return 'Study';
+      })();
       
       const newTask: Task = {
         id: Date.now().toString(),
