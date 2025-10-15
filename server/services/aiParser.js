@@ -76,67 +76,7 @@ Parse the user's voice command and return a JSON object with the following STRIC
     "applyToLastScheduled": boolean | null // true if refers to the most recent scheduled item (e.g., "this appointment")
   }
 }
-
-// Ask OpenAI to return an ARRAY of commands in one shot
-async function parseCommandsArray(transcript) {
-  const now = new Date();
-  const currentDateTime = now.toISOString();
-  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a voice command parser for a task planning application. Parse the user's full utterance into an ARRAY of structured commands.
-
-Return ONLY valid JSON object with a single top-level key "commands" that is an array (no markdown):
-{
-  "commands": [
-    {
-      "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
-      "confidence": number,
-      "extractedData": {
-        "title": string,
-        "dueDate": string | null,
-        "date": string | null,   // YYYY-MM-DD (user local)
-        "time": string | null,   // HH:mm 24h (user local)
-        "priority": "low" | "medium" | "high",
-        "timePreference": "morning" | "afternoon" | "evening" | null,
-        "duration": number | null,
-        "description": string | null,
-        "reminders": number[] | null,            // minutes before due time
-        "applyToLastScheduled": boolean | null   // refers to most recently scheduled item
-      }
-    }
-  ]
-}
-
-Rules:
-- Interpret weekdays and times in user's timezone if provided via hints like [UserTimeZone:..] or [UserOffsetMinutes:..].
-- If multiple tasks are spoken (e.g., "... and ..."), return multiple objects in the array.
-- If only one command is present, still return one object in the "commands" array.
-- Use "schedule" for appointments/meetings. Clean titles (no command words/time phrases).
-- Populate date/time fields when present; set dueDate when datetime is fully known.
-- Extract reminder offsets from phrases like "30 minutes", "an hour", and allow multiples.
-- Return {"commands":[]} only if nothing actionable is detected.`
-      },
-      { role: "user", content: transcript }
-    ],
-    temperature: 0.2,
-    response_format: { type: "json_object" }
-  });
-
-  // The model returns a JSON object or array as a string; ensure we get an array
-  const content = completion.choices[0].message.content;
-  const parsed = JSON.parse(content);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed && Array.isArray(parsed.commands)) return parsed.commands;
-  if (parsed && Array.isArray(parsed.data)) return parsed.data;
-  return [];
-}
-
-// NOTE: Removed stray prompt text that was accidentally left outside of a string
+`
         },
         {
           role: "user",
