@@ -90,32 +90,36 @@ async function parseCommandsArray(transcript) {
         role: "system",
         content: `You are a voice command parser for a task planning application. Parse the user's full utterance into an ARRAY of structured commands.
 
-Return ONLY valid JSON array, no markdown. The array should contain one object per command, using this strict shape:
+Return ONLY valid JSON object with a single top-level key "commands" that is an array (no markdown):
 {
-  "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
-  "confidence": number,
-  "extractedData": {
-    "title": string,
-    "dueDate": string | null,
-    "date": string | null,   // YYYY-MM-DD (user local)
-    "time": string | null,   // HH:mm 24h (user local)
-    "priority": "low" | "medium" | "high",
-    "timePreference": "morning" | "afternoon" | "evening" | null,
-    "duration": number | null,
-    "description": string | null,
-    "reminders": number[] | null,            // minutes before due time
-    "applyToLastScheduled": boolean | null   // refers to most recently scheduled item
-  }
+  "commands": [
+    {
+      "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
+      "confidence": number,
+      "extractedData": {
+        "title": string,
+        "dueDate": string | null,
+        "date": string | null,   // YYYY-MM-DD (user local)
+        "time": string | null,   // HH:mm 24h (user local)
+        "priority": "low" | "medium" | "high",
+        "timePreference": "morning" | "afternoon" | "evening" | null,
+        "duration": number | null,
+        "description": string | null,
+        "reminders": number[] | null,            // minutes before due time
+        "applyToLastScheduled": boolean | null   // refers to most recently scheduled item
+      }
+    }
+  ]
 }
 
 Rules:
 - Interpret weekdays and times in user's timezone if provided via hints like [UserTimeZone:..] or [UserOffsetMinutes:..].
 - If multiple tasks are spoken (e.g., "... and ..."), return multiple objects in the array.
-- If only one command is present, still return an array with a single object.
+- If only one command is present, still return one object in the "commands" array.
 - Use "schedule" for appointments/meetings. Clean titles (no command words/time phrases).
 - Populate date/time fields when present; set dueDate when datetime is fully known.
 - Extract reminder offsets from phrases like "30 minutes", "an hour", and allow multiples.
-- Return an empty array only if nothing actionable is detected.`
+- Return {"commands":[]} only if nothing actionable is detected.`
       },
       { role: "user", content: transcript }
     ],
@@ -126,7 +130,10 @@ Rules:
   // The model returns a JSON object or array as a string; ensure we get an array
   const content = completion.choices[0].message.content;
   const parsed = JSON.parse(content);
-  return Array.isArray(parsed) ? parsed : [parsed];
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && Array.isArray(parsed.commands)) return parsed.commands;
+  if (parsed && Array.isArray(parsed.data)) return parsed.data;
+  return [];
 }
 
 Intent definitions:
