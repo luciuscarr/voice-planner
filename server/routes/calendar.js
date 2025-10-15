@@ -175,15 +175,29 @@ router.get('/events', async (req, res) => {
       initCalendar();
     }
 
-    // Get all calendars for the user
+    // Get all calendars for the user and filter to those the user OWNS
     const listResp = await calendar.calendarList.list();
-    const calendars = (listResp.data.items || []).map((c) => c.id).filter(Boolean);
+    const calendars = (listResp.data.items || [])
+      .filter((c) => c && (c.accessRole === 'owner'))
+      .map((c) => c.id)
+      .filter(Boolean);
 
-    // If no calendars returned for some reason, fallback to primary
+    // If no owned calendars returned for some reason, fallback to primary
     const targetCalendarIds = calendars.length > 0 ? calendars : ['primary'];
 
-    const from = timeMin || new Date().toISOString();
-    const to = timeMax || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+    // Determine import window: start of today through end of day + 3 days (hard-capped server-side)
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfRange = new Date(startOfToday);
+    endOfRange.setDate(endOfRange.getDate() + 3);
+    endOfRange.setHours(23, 59, 59, 999);
+
+    // If client provided bounds, use them but cap to our enforced window
+    const clientMin = timeMin ? new Date(String(timeMin)) : null;
+    const clientMax = timeMax ? new Date(String(timeMax)) : null;
+    const from = clientMin && !isNaN(clientMin.getTime()) && clientMin > startOfToday ? clientMin.toISOString() : startOfToday.toISOString();
+    const to = clientMax && !isNaN(clientMax.getTime()) && clientMax < endOfRange ? clientMax.toISOString() : endOfRange.toISOString();
 
     // Fetch events from all calendars in parallel
     const results = await Promise.all(
