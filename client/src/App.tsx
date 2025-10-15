@@ -298,6 +298,11 @@ function App() {
     ));
   };
 
+  const handleImportTasks = (imported: Task[]) => {
+    // Prepend imported tasks
+    setTasks(prev => [...imported, ...prev]);
+  };
+
   const handleCreateTask = () => {
     const newTask: Task = {
       id: Date.now().toString(),
@@ -409,6 +414,7 @@ function App() {
                 onCreateTask={handleCreateTask}
                 onSync={handleSyncTask}
                 onUnsync={handleUnsyncTask}
+                onImportTasks={handleImportTasks}
               />
             </motion.div>
           </div>

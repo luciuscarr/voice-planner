@@ -13,6 +13,7 @@ interface TaskListProps {
   onCreateTask: () => void;
   onSync: (task: Task) => void;
   onUnsync: (taskId: string) => void;
+  onImportTasks: (tasks: Task[]) => void;
 }
 
 type FilterType = 'all' | 'pending' | 'completed' | 'high' | 'medium' | 'low';
@@ -24,7 +25,8 @@ export const TaskList: React.FC<TaskListProps> = ({
   onUpdate, 
   onCreateTask,
   onSync,
-  onUnsync
+  onUnsync,
+  onImportTasks
 }) => {
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,23 +92,68 @@ export const TaskList: React.FC<TaskListProps> = ({
   }, [tasks]);
 
   const importCalendar = async () => {
-    const token = localStorage.getItem('google_access_token');
-    if (!token) {
-      alert('Please connect Google Calendar first.');
-      return;
-    }
-    const start = new Date();
-    const end = new Date();
-    end.setDate(end.getDate() + 30);
-    const imported = await importCalendarAsTasks(token, start, end);
-    if (imported.length > 0) {
-      // Merge imported tasks (avoid duplicates by id)
-      onUpdate('__bulk__', {} as any); // no-op to trigger external saves if needed
-      // Prepend imported tasks
-      // The actual state is in parent; we can expose a callback or just console.info
-      console.info('Imported tasks from Google:', imported.length);
-    } else {
-      alert('No events found to import.');
+    try {
+      let token = localStorage.getItem('google_access_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+      // If not connected, prompt connection and then continue
+      if (!token) {
+        const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Failed to start Google auth: ${response.status} - ${errText}`);
+        }
+        const { authUrl } = await response.json();
+
+        await new Promise<void>((resolve, reject) => {
+          const handler = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'google-calendar-auth') {
+              window.removeEventListener('message', handler);
+              if (event.data.success && event.data.accessToken) {
+                localStorage.setItem('google_access_token', event.data.accessToken);
+                resolve();
+              } else {
+                reject(new Error('Google authentication failed'));
+              }
+            }
+          };
+          window.addEventListener('message', handler);
+          const popup = window.open(authUrl, 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+          const interval = setInterval(() => {
+            if (popup && popup.closed) {
+              clearInterval(interval);
+              window.removeEventListener('message', handler);
+              reject(new Error('Google auth window was closed'));
+            }
+          }, 1000);
+        });
+        token = localStorage.getItem('google_access_token');
+        if (!token) throw new Error('Missing access token after authentication');
+      }
+
+      // Proceed with import
+      const start = new Date();
+      const end = new Date();
+      end.setDate(end.getDate() + 30);
+      const imported = await importCalendarAsTasks(token, start, end);
+
+      if (imported.length > 0) {
+        // Dedup by id against current list
+        const currentIds = new Set(tasks.map(t => t.id));
+        const newOnes = imported.filter((t: Task) => !currentIds.has(t.id));
+        if (newOnes.length > 0) {
+          onImportTasks(newOnes);
+          alert(`Imported ${newOnes.length} event${newOnes.length > 1 ? 's' : ''} from Google Calendar.`);
+        } else {
+          alert('No new events to import (already in your list).');
+        }
+      } else {
+        alert('No events found to import.');
+      }
+    } catch (e) {
+      console.error('Import error:', e);
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      alert(`Failed to import from Google Calendar. ${msg}`);
     }
   };
 
