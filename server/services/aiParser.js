@@ -176,7 +176,17 @@ async function parseMultipleCommands(transcript) {
         parts = newParts;
       }
 
-      // 3) Start of a new appointment/meeting/event phrase (e.g., "another appointment", "another meeting")
+      // 3) If phrase like "and schedule another appointment ...", split right before that sequence
+      {
+        const newParts = [];
+        for (const part of parts) {
+          const chunks = part.split(/\band\s+schedule\s+(?=another\s+(appointment|meeting|event)\b)/gi);
+          newParts.push(...chunks);
+        }
+        parts = newParts;
+      }
+
+      // 4) Start of a new appointment/meeting/event phrase (e.g., "another appointment", "another meeting")
       {
         const newParts = [];
         for (const part of parts) {
@@ -187,7 +197,19 @@ async function parseMultipleCommands(transcript) {
         parts = newParts;
       }
 
-      return parts.map(p => p.trim()).filter(p => p.length > 0);
+      // 5) Cleanup: remove connector-only fragments like "and", "and schedule"
+      const cleaned = [];
+      for (let i = 0; i < parts.length; i++) {
+        const p = (parts[i] || '').trim();
+        if (!p) continue;
+        // Drop trivial connectors
+        if (/^(and|then)$/i.test(p)) continue;
+        if (/^(and\s+)?schedule\s*$/i.test(p)) continue;
+        if (/^(and\s+)?schedule\s+(it|this|that)$/i.test(p)) continue;
+        cleaned.push(p);
+      }
+
+      return cleaned;
     };
 
     // First attempt deterministic splitting regardless of AI flag
