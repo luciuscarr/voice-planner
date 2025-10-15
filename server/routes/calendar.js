@@ -108,7 +108,7 @@ router.post('/sync-task', async (req, res) => {
       initCalendar();
     }
 
-    // Create calendar event from task
+    // Build calendar event resource from task
     const event = {
       summary: task.title,
       description: task.description || '',
@@ -133,10 +133,21 @@ router.post('/sync-task', async (req, res) => {
       };
     }
 
-    const response = await calendar.events.insert({
-      calendarId: 'primary',
-      resource: event,
-    });
+    let response;
+    if (task.calendarEventId) {
+      // Update existing event (e.g., to change reminders)
+      response = await calendar.events.patch({
+        calendarId: 'primary',
+        eventId: task.calendarEventId,
+        resource: event,
+      });
+    } else {
+      // Create new event
+      response = await calendar.events.insert({
+        calendarId: 'primary',
+        resource: event,
+      });
+    }
 
     res.json({
       success: true,

@@ -120,6 +120,14 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
         const result = await response.json();
         setSyncStatus('synced');
         onSync({ ...task, calendarEventId: result.eventId });
+        // If reminders exist and event already synced, call sync again to force patch (ensures overrides persist)
+        if (task.reminders && task.reminders.length > 0) {
+          await fetch(`${apiUrl}/api/calendar/sync-task`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task: { ...task, calendarEventId: result.eventId }, accessToken: token })
+          });
+        }
       } else {
         setSyncStatus('error');
       }
