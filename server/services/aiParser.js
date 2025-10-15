@@ -136,47 +136,7 @@ Rules:
   return [];
 }
 
-Intent definitions:
-- "task": Creating or adding a task/todo item
-- "reminder": Setting a reminder or alert
-- "note": Recording a note or memo
-- "schedule": Scheduling a meeting or appointment
-- "findTime": Finding available time for an activity
-- "delete": Removing or canceling something
-- "complete": Marking something as done
-- "unknown": Cannot determine intent
-
-Priority rules:
-- "urgent", "important", "asap", "critical" → high
-- "low", "minor", "whenever" → low
-- default → medium
-
-Time parsing rules:
-- Reminder parsing rules:
-- Phrases like "remind me 30 minutes before", "notify me an hour before" → reminders: [30] or [60]
-- Allow multiple reminders: "30 minutes and an hour before" → [30, 60]
-- "this appointment" / "that meeting" should set applyToLastScheduled = true
-- "today" → today's date
-- "tomorrow" → tomorrow's date
-- "next week" → 7 days from now
-- "monday", "tuesday", etc → next occurrence of that day in the user's timezone context
-- "at 3pm", "at 3 o'clock" → include specific time
-- "in 2 hours", "in 30 minutes" → relative time from now
-- "morning" → 9:00 AM if no specific time
-- "afternoon" → 2:00 PM if no specific time
-- "evening" → 6:00 PM if no specific time
-
-Formatting rules:
-- Always interpret dates/times in the user's local timezone unless an explicit timezone is spoken.
-- If a specific calendar date is inferred/mentioned, set extractedData.date as YYYY-MM-DD (user local).
-- If a specific clock time is inferred/mentioned, set extractedData.time as HH:mm (24-hour, user local).
-- If both date and time are present, you may set extractedData.dueDate to the combined ISO datetime but the client will recompute in local time from date+time fields.
-- If only date or time is present, set dueDate to null and populate date/time fields accordingly.
-
-Multiple commands:
-If multiple tasks are mentioned (separated by "and", "also", commas), only parse the FIRST one and set a flag "hasMultipleTasks": true.
-
-Return ONLY valid JSON, no markdown or additional text.`
+// NOTE: Removed stray prompt text that was accidentally left outside of a string
         },
         {
           role: "user",
