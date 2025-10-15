@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { HelpCircle, Settings, Mic } from 'lucide-react';
 import { VoiceRecorder } from './components/VoiceRecorder';
 import { TaskList } from './components/TaskList';
+import { ThreeDayCalendar } from './components/ThreeDayCalendar';
 import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';
 import { fetchCalendarEvents, findFreeTimeSlots, findBestTimeSlot, formatTimeSlot, parseTimePreference } from './utils/calendarHelper';
@@ -418,23 +419,18 @@ function App() {
             </motion.div>
           </div>
 
-          {/* Task List Section */}
+          {/* Calendar Section */}
           <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
             >
-              <TaskList
-                tasks={tasks}
-                onToggle={handleToggleTask}
-                onDelete={handleDeleteTask}
-                onUpdate={handleUpdateTask}
-                onCreateTask={handleCreateTask}
-                onSync={handleSyncTask}
-                onUnsync={handleUnsyncTask}
-                onImportTasks={handleImportTasks}
-              />
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Next 3 Days</h2>
+                <div className="text-xs text-gray-500">Today, Tomorrow, and the next day</div>
+              </div>
+              <ThreeDayCalendar tasks={tasks} />
             </motion.div>
           </div>
         </div>
