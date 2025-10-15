@@ -87,17 +87,27 @@ function App() {
         // Treat explicit reminder intent or applyToLastScheduled flag as a reminder update
         const isReminderUpdate = (cmd.intent === 'reminder') || !!cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text);
         if (isReminderUpdate && cmd.extractedData?.reminders) {
+          const offsets = cmd.extractedData.reminders;
           if (batchLastScheduledId) {
-            setTasks(prev => prev.map(t => {
-              if (t.id !== batchLastScheduledId) return t;
-              const existing = Array.isArray(t.reminders) ? t.reminders : [];
-              const next = Array.from(new Set([ ...existing, ...cmd.extractedData!.reminders! ]));
-              return { ...t, reminders: next, updatedAt: new Date().toISOString() };
-            }));
+            // Prefer updating the task created in this batch if present
+            const idx = newTasks.findIndex(t => t.id === batchLastScheduledId);
+            if (idx >= 0) {
+              const existing = Array.isArray(newTasks[idx].reminders) ? newTasks[idx].reminders! : [];
+              const merged = Array.from(new Set([ ...existing, ...offsets ]));
+              newTasks[idx] = { ...newTasks[idx], reminders: merged, updatedAt: new Date().toISOString() };
+            } else {
+              // Otherwise update an existing task in state
+              setTasks(prev => prev.map(t => {
+                if (t.id !== batchLastScheduledId) return t;
+                const existing = Array.isArray(t.reminders) ? t.reminders : [];
+                const next = Array.from(new Set([ ...existing, ...offsets ]));
+                return { ...t, reminders: next, updatedAt: new Date().toISOString() };
+              }));
+            }
           } else {
             // No task created yet in this batch; hold onto reminders to apply to the next scheduled task created now
             const existing = Array.isArray(pendingReminders) ? pendingReminders : [];
-            pendingReminders = Array.from(new Set([ ...existing, ...cmd.extractedData.reminders ]));
+            pendingReminders = Array.from(new Set([ ...existing, ...offsets ]));
           }
           return;
         }
