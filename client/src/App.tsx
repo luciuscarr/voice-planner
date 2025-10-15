@@ -430,7 +430,12 @@ function App() {
                 <h2 className="text-lg font-semibold text-gray-900">Next 3 Days</h2>
                 <div className="text-xs text-gray-500">Today, Tomorrow, and the next day</div>
               </div>
-              <ThreeDayCalendar tasks={tasks} />
+              <ThreeDayCalendar
+                tasks={tasks}
+                onSync={handleSyncTask}
+                onUnsync={handleUnsyncTask}
+                onImportTasks={handleImportTasks}
+              />
             </motion.div>
           </div>
         </div>
