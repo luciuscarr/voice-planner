@@ -27,9 +27,17 @@ function extractReminderOffsets(text) {
       if (num) mins.push(num);
     }
   }
-  // common phrases
+  // common phrases (do not add duplicates)
   if (/half an hour/.test(lower)) mins.push(30);
-  if (/quarter of an hour|quarter hour/.test(lower)) mins.push(15);
+  if (/(quarter of an hour|quarter hour)/.test(lower)) mins.push(15);
+  // capture patterns like "30 minutes and an hour" or "30, 45, and 60 minutes"
+  const listMinutes = lower.match(/\b(\d{1,3})\s*(minutes|min)\b/g);
+  if (listMinutes) {
+    for (const m of listMinutes) {
+      const n = parseInt(m);
+      if (!isNaN(n)) mins.push(n);
+    }
+  }
 
   // de-duplicate and sort descending (longer first or arbitrary)
   const unique = Array.from(new Set(mins));

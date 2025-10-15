@@ -88,10 +88,16 @@ function App() {
         const isReminderUpdate = (cmd.intent === 'reminder') || !!cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text);
         if (isReminderUpdate && cmd.extractedData?.reminders) {
           if (batchLastScheduledId) {
-            setTasks(prev => prev.map(t => t.id === batchLastScheduledId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
+            setTasks(prev => prev.map(t => {
+              if (t.id !== batchLastScheduledId) return t;
+              const existing = Array.isArray(t.reminders) ? t.reminders : [];
+              const next = Array.from(new Set([ ...existing, ...cmd.extractedData!.reminders! ]));
+              return { ...t, reminders: next, updatedAt: new Date().toISOString() };
+            }));
           } else {
             // No task created yet in this batch; hold onto reminders to apply to the next scheduled task created now
-            pendingReminders = cmd.extractedData.reminders;
+            const existing = Array.isArray(pendingReminders) ? pendingReminders : [];
+            pendingReminders = Array.from(new Set([ ...existing, ...cmd.extractedData.reminders ]));
           }
           return;
         }
