@@ -84,8 +84,9 @@ function App() {
       let pendingReminders: number[] | null = null;
       
       commands.forEach((cmd, index) => {
-        // If this is a reminder-update command that refers to the last scheduled task (batch-local first)
-        if ((cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text)) && cmd.extractedData?.reminders) {
+        // Treat explicit reminder intent or applyToLastScheduled flag as a reminder update
+        const isReminderUpdate = (cmd.intent === 'reminder') || !!cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text);
+        if (isReminderUpdate && cmd.extractedData?.reminders) {
           if (batchLastScheduledId) {
             setTasks(prev => prev.map(t => t.id === batchLastScheduledId ? { ...t, reminders: cmd.extractedData!.reminders, updatedAt: new Date().toISOString() } : t));
           } else {
