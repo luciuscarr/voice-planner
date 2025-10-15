@@ -223,8 +223,18 @@ async function parseMultipleCommands(transcript) {
     try {
       const array = await parseCommandsArray(transcript);
       if (Array.isArray(array) && array.length > 0) {
-        // Attach original text to each for traceability
-        return array.map(cmd => ({ text: transcript, ...cmd }));
+        let commands = array.map(cmd => ({ text: transcript, ...cmd }));
+        // If model returned only a reminder but transcript clearly contains an appointment time, synthesize a schedule
+        const hasSchedule = commands.some(c => c.intent === 'schedule' || c.intent === 'task');
+        const hasReminder = commands.some(c => c.intent === 'reminder' || (c.extractedData && Array.isArray(c.extractedData.reminders) && c.extractedData.reminders.length > 0));
+        const looksLikeAppointment = /\b(appointment|meeting|schedule)\b/i.test(transcript) && /(\b\d{1,2}(:\d{2})?\s*(am|pm)\b|at\s+\d{1,2})/i.test(transcript);
+        if (!hasSchedule && hasReminder && looksLikeAppointment) {
+          const candidate = await parseVoiceCommand(transcript);
+          if (candidate && (candidate.intent === 'schedule' || candidate.extractedData?.dueDate || candidate.extractedData?.time)) {
+            commands = [{ ...candidate, text: transcript }, ...commands];
+          }
+        }
+        return commands;
       }
     } catch (e) {
       // fall through to deterministic splitting
