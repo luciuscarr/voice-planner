@@ -120,34 +120,44 @@ export function findBestTimeSlot(
   preferredTime?: 'morning' | 'afternoon' | 'evening',
   duration: number = 60 // task duration in minutes
 ): TimeSlot | null {
-  // Filter slots that can fit the task
+  // Filter slots that can fit the task at all
   const suitableSlots = freeSlots.filter(slot => slot.duration >= duration);
-  
-  if (suitableSlots.length === 0) {
-    return null;
-  }
+  if (suitableSlots.length === 0) return null;
 
-  // If no preference, return the first available slot
-  if (!preferredTime) {
-    return suitableSlots[0];
-  }
-
-  // Define time preferences
+  // Define preference windows on the same day as the slot
   const timeRanges = {
     morning: { start: 6, end: 12 },
     afternoon: { start: 12, end: 17 },
     evening: { start: 17, end: 22 }
+  } as const;
+
+  const clampToDuration = (slot: TimeSlot, start: Date): TimeSlot => {
+    const end = new Date(start.getTime() + duration * 60 * 1000);
+    return { start, end, duration };
   };
 
-  const range = timeRanges[preferredTime];
+  // Try to place the block within a preferred window
+  if (preferredTime) {
+    const range = timeRanges[preferredTime];
+    for (const slot of suitableSlots) {
+      const dayStart = new Date(slot.start);
+      const windowStart = new Date(slot.start);
+      windowStart.setHours(range.start, 0, 0, 0);
+      const windowEnd = new Date(slot.start);
+      windowEnd.setHours(range.end, 0, 0, 0);
 
-  // Find slots in preferred time range
-  const preferredSlots = suitableSlots.filter(slot => {
-    const hour = slot.start.getHours();
-    return hour >= range.start && hour < range.end;
-  });
+      // Candidate start is the later of slot.start and windowStart
+      const candidateStart = new Date(Math.max(slot.start.getTime(), windowStart.getTime()));
+      const latestEnd = new Date(Math.min(slot.end.getTime(), windowEnd.getTime()));
+      if (candidateStart.getTime() + duration * 60 * 1000 <= latestEnd.getTime()) {
+        return clampToDuration(slot, candidateStart);
+      }
+    }
+  }
 
-  return preferredSlots.length > 0 ? preferredSlots[0] : suitableSlots[0];
+  // Fallback: take earliest slot and clamp to requested duration
+  const first = suitableSlots[0];
+  return clampToDuration(first, new Date(first.start));
 }
 
 // Format time slot for display
