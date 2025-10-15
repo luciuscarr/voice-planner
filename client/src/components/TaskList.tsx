@@ -132,9 +132,12 @@ export const TaskList: React.FC<TaskListProps> = ({
       }
 
       // Proceed with import
+      // Range: today through the next 3 days
       const start = new Date();
-      const end = new Date();
-      end.setDate(end.getDate() + 30);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 3);
+      end.setHours(23, 59, 59, 999);
       const imported = await importCalendarAsTasks(token, start, end);
 
       if (imported.length > 0) {
