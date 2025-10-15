@@ -44,6 +44,45 @@ const WORD_TO_NUMBER: { [key: string]: number } = {
   'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12
 };
 
+// Extract reminder offsets like "30 minutes" or "an hour" from free text
+function extractReminderOffsets(text: string): number[] {
+  const lower = text.toLowerCase();
+  const minutes: number[] = [];
+
+  // Numeric minutes, e.g., 5 min, 15 minutes, 120 minutes
+  const minuteMatches = lower.match(/(\d{1,3})\s*(minute|minutes|min)\b/g);
+  if (minuteMatches) {
+    for (const m of minuteMatches) {
+      const n = parseInt(m);
+      if (!isNaN(n)) minutes.push(n);
+    }
+  }
+
+  // Hours variants, e.g., an hour, 1 hour, 2 hrs
+  const hourMatches = lower.match(/(an|a|\d{1,2})\s*(hour|hours|hr|hrs)\b/g);
+  if (hourMatches) {
+    for (const m of hourMatches) {
+      const val = m.startsWith('an') || m.startsWith('a') ? 1 : parseInt(m);
+      const num = isNaN(val) ? null : val * 60;
+      if (num) minutes.push(num);
+    }
+  }
+
+  // Common phrases
+  if (/half an hour/.test(lower)) minutes.push(30);
+  if (/(quarter of an hour|quarter hour)/.test(lower)) minutes.push(15);
+
+  // De-duplicate and sort ascending (closest first)
+  const unique = Array.from(new Set(minutes));
+  return unique.sort((a, b) => a - b);
+}
+
+// Heuristic to determine if a reminder refers to the last scheduled item in the same utterance
+function refersToLastScheduled(text: string): boolean {
+  const lower = text.toLowerCase();
+  return /(beforehand|before|for\s+this|for\s+that|this\s+appointment|this\s+meeting|remind\s+me)/.test(lower);
+}
+
 // Split transcript into multiple tasks if separated by keywords
 function splitIntoMultipleTasks(transcript: string): string[] {
   let tasks = [transcript];
@@ -213,6 +252,10 @@ function parseSingleTask(transcript: string): VoiceCommand {
     }
   }
 
+  // Extract reminder offsets and contextual linkage
+  const reminderOffsets = extractReminderOffsets(transcript);
+  const applyToLast = refersToLastScheduled(transcript);
+
   return {
     text: transcript,
     intent,
@@ -220,7 +263,11 @@ function parseSingleTask(transcript: string): VoiceCommand {
     extractedData: {
       title: title.trim(),
       dueDate,
-      priority
+      priority,
+      // Include reminders if mentioned anywhere in the fragment
+      reminders: reminderOffsets.length > 0 ? reminderOffsets : undefined,
+      // Mark that this reminder likely applies to the previously scheduled item
+      applyToLastScheduled: reminderOffsets.length > 0 && applyToLast ? true : undefined
     }
   };
 }
