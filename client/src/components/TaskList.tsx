@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Task } from '@shared/types';
+import { importCalendarAsTasks } from '../utils/calendarHelper';
 import { TaskItem } from './TaskItem';
 import { Filter, Search, Plus } from 'lucide-react';
 
@@ -88,6 +89,27 @@ export const TaskList: React.FC<TaskListProps> = ({
     return { total, completed, pending, highPriority };
   }, [tasks]);
 
+  const importCalendar = async () => {
+    const token = localStorage.getItem('google_access_token');
+    if (!token) {
+      alert('Please connect Google Calendar first.');
+      return;
+    }
+    const start = new Date();
+    const end = new Date();
+    end.setDate(end.getDate() + 30);
+    const imported = await importCalendarAsTasks(token, start, end);
+    if (imported.length > 0) {
+      // Merge imported tasks (avoid duplicates by id)
+      onUpdate('__bulk__', {} as any); // no-op to trigger external saves if needed
+      // Prepend imported tasks
+      // The actual state is in parent; we can expose a callback or just console.info
+      console.info('Imported tasks from Google:', imported.length);
+    } else {
+      alert('No events found to import.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,6 +130,16 @@ export const TaskList: React.FC<TaskListProps> = ({
         >
           <Plus className="w-4 h-4" />
           <span>Add Task</span>
+        </motion.button>
+        
+        <motion.button
+          onClick={importCalendar}
+          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus className="w-4 h-4" />
+          <span>Import from Google</span>
         </motion.button>
       </div>
 

@@ -183,9 +183,21 @@ router.get('/events', async (req, res) => {
       orderBy: 'startTime',
     });
 
-    res.json({
-      events: response.data.items || []
-    });
+    // Map Google events to Task-like objects for client display
+    const items = response.data.items || [];
+    const tasks = items.map((e) => ({
+      id: e.id,
+      title: e.summary || 'Untitled event',
+      description: e.description,
+      completed: false,
+      priority: 'medium',
+      dueDate: e.start?.dateTime || e.start?.date || undefined,
+      calendarEventId: e.id,
+      createdAt: e.created || new Date().toISOString(),
+      updatedAt: e.updated || new Date().toISOString(),
+    }));
+
+    res.json({ events: items, tasks });
   } catch (error) {
     console.error('Google Calendar fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch Google Calendar events' });

@@ -7,6 +7,7 @@ export interface Task {
   dueDate?: string;
   // Minutes before dueDate when notifications should fire (e.g., [60, 30])
   reminders?: number[];
+  calendarEventId?: string;
   createdAt: string;
   updatedAt: string;
 }

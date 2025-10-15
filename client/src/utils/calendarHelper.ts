@@ -37,6 +37,21 @@ export async function fetchCalendarEvents(
   }
 }
 
+// Import Google events as local tasks
+export async function importCalendarAsTasks(accessToken: string, startDate: Date, endDate: Date) {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const response = await fetch(
+      `${apiUrl}/api/calendar/events?accessToken=${accessToken}&timeMin=${startDate.toISOString()}&timeMax=${endDate.toISOString()}`
+    );
+    const data = await response.json();
+    return data.tasks || [];
+  } catch (e) {
+    console.error('Error importing calendar as tasks', e);
+    return [];
+  }
+}
+
 // Find free time slots in a day
 export function findFreeTimeSlots(
   events: CalendarEvent[],
