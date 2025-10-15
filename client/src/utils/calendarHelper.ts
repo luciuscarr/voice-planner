@@ -182,6 +182,7 @@ export function parseTimePreference(text: string): {
   duration?: number;
   preference?: 'morning' | 'afternoon' | 'evening';
   date?: Date;
+  window?: { start?: Date; end?: Date };
 } {
   const lowerText = text.toLowerCase();
   const result: any = {};
@@ -204,6 +205,32 @@ export function parseTimePreference(text: string): {
   const minuteMatch = lowerText.match(/(\d+)\s*minute/);
   if (minuteMatch) {
     result.duration = parseInt(minuteMatch[1]);
+  }
+
+  // Detect optional time window like "between 2:00 and 4:00 p.m."
+  const windowMatch = text.match(/between\s+([0-9]{1,2}(:[0-9]{2})?\s*(am|pm)?)\s+and\s+([0-9]{1,2}(:[0-9]{2})?\s*(am|pm)?)/i);
+  if (windowMatch) {
+    const parseClock = (s: string): { h: number; m: number; ampm?: string } => {
+      const m = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+      const h = m && m[1] ? parseInt(m[1]) : 0;
+      const mi = m && m[2] ? parseInt(m[2]) : 0;
+      const ap = m && m[3] ? m[3].toLowerCase() : undefined;
+      return { h, m: mi, ampm: ap };
+    };
+    const startClock = parseClock(windowMatch[1]);
+    const endClock = parseClock(windowMatch[4]);
+    const anchor = new Date();
+    const start = new Date(anchor);
+    let sh = startClock.h;
+    if (startClock.ampm === 'pm' && sh !== 12) sh += 12;
+    if (startClock.ampm === 'am' && sh === 12) sh = 0;
+    start.setHours(sh, startClock.m, 0, 0);
+    const end = new Date(anchor);
+    let eh = endClock.h;
+    if (endClock.ampm === 'pm' && eh !== 12) eh += 12;
+    if (endClock.ampm === 'am' && eh === 12) eh = 0;
+    end.setHours(eh, endClock.m, 0, 0);
+    result.window = { start, end };
   }
 
   // Detect date

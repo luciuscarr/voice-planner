@@ -204,8 +204,17 @@ function parseSingleTask(transcript: string): VoiceCommand {
       // Handle AM/PM conversion
       if (ampm === 'pm' && hours !== 12) hours += 12;
       if (ampm === 'am' && hours === 12) hours = 0;
-      // If no AM/PM specified and hour is between 1-7, assume PM (common for afternoon meetings)
-      if (!ampm && hours >= 1 && hours <= 7) hours += 12;
+      
+      // If no AM/PM specified, apply heuristics: if the mentioned hour is earlier than current hour, assume PM
+      if (!ampm) {
+        const nowHour = new Date().getHours();
+        if (hours < nowHour && hours >= 1 && hours <= 11) {
+          hours += 12;
+        } else if (hours >= 1 && hours <= 7) {
+          // Keep previous heuristic favoring afternoon/evening for small hours
+          hours += 12;
+        }
+      }
       
       specificTime = { hours, minutes };
     }

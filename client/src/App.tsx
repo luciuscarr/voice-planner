@@ -212,7 +212,7 @@ function App() {
       }
 
       // Parse the time preference from command
-      const { duration = 60, preference, date = new Date() } = parseTimePreference(command.text);
+      const { duration = 60, preference, date = new Date(), window } = parseTimePreference(command.text);
       
       // Fetch calendar events for the specified date
       const startOfDay = new Date(date);
@@ -236,7 +236,15 @@ function App() {
       const events = [...googleEvents, ...localBusy];
       
       // Find free time slots
-      const freeSlots = findFreeTimeSlots(events, date, duration);
+      let freeSlots = findFreeTimeSlots(events, date, duration);
+      // If a window is specified, clip free slots to that window
+      if (window && (window.start || window.end)) {
+        freeSlots = freeSlots.map((slot) => {
+          const start = new Date(Math.max(slot.start.getTime(), window.start ? window.start.getTime() : slot.start.getTime()));
+          const end = new Date(Math.min(slot.end.getTime(), window.end ? window.end.getTime() : slot.end.getTime()));
+          return { start, end, duration: (end.getTime() - start.getTime()) / (1000 * 60) };
+        }).filter(s => s.end > s.start && s.duration >= duration);
+      }
       
       if (freeSlots.length === 0) {
         alert(`No free time slots found for ${date.toLocaleDateString()}. Your day is fully booked!`);
@@ -435,6 +443,7 @@ function App() {
                 onSync={handleSyncTask}
                 onUnsync={handleUnsyncTask}
                 onImportTasks={handleImportTasks}
+                onDelete={handleDeleteTask}
               />
             </motion.div>
           </div>

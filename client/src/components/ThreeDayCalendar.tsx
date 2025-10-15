@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Task } from '@shared/types';
 import { format } from 'date-fns';
 import { CalendarSync } from './CalendarSync';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { importCalendarAsTasks } from '../utils/calendarHelper';
 
 interface ThreeDayCalendarProps {
@@ -10,6 +10,7 @@ interface ThreeDayCalendarProps {
   onSync: (task: Task) => void;
   onUnsync: (taskId: string) => void;
   onImportTasks: (tasks: Task[]) => void;
+  onDelete: (id: string) => void;
 }
 
 function getStartOfDay(date: Date): Date {
@@ -38,7 +39,7 @@ function timeLabel(iso?: string): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSync, onUnsync, onImportTasks }) => {
+export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSync, onUnsync, onImportTasks, onDelete }) => {
   const today = getStartOfDay(new Date());
   const days = [0, 1, 2].map((offset) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset));
 
@@ -208,6 +209,23 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
     }
   }, [tasks, onSync]);
 
+  const deleteItem = useCallback(async (t: Task) => {
+    try {
+      // If synced/imported (has calendarEventId), attempt to delete from Google first
+      if (t.calendarEventId) {
+        const token = localStorage.getItem('google_access_token');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        if (token) {
+          await fetch(`${apiUrl}/api/calendar/events/${t.calendarEventId}?accessToken=${token}`, { method: 'DELETE' });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to delete from Google Calendar, removing locally anyway');
+    } finally {
+      onDelete(t.id);
+    }
+  }, [onDelete]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end mb-2 gap-2">
@@ -250,7 +268,15 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
                           <div className="mt-1 text-[11px] text-gray-600">Reminders: {t.reminders.map((m, i) => (i === 0 ? `${m}m` : `, ${m}m`))}</div>
                         )}
                       </div>
-                      <div className="shrink-0">
+                      <div className="shrink-0 flex items-center gap-1">
+                        <button
+                          onClick={() => deleteItem(t)}
+                          title="Delete"
+                          aria-label="Delete"
+                          className="p-1.5 rounded-md text-gray-500 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                         <CalendarSync compact task={t as any} onSync={onSync as any} onUnsync={onUnsync as any} />
                       </div>
                     </div>
