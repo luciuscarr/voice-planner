@@ -232,16 +232,26 @@ async function parseMultipleCommands(transcript) {
 
     // Normalize contextual fragments
     const normalizedParts = parts.map((p) => {
-      let text = p;
-      const lower = p.toLowerCase();
+      let text = p.trim();
+      const lower = text.toLowerCase();
       const hasCommandWord = /(add|create|make|schedule|remind|note|delete|remove|cancel|complete)\b/i.test(lower);
       const startsContextual = /^(another|on\s+\w+day|on\s+\w+|at\s+\d|tomorrow|today|next\s+\w+)/i.test(lower);
+      const hasTime = /(\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\bat\s+\d{1,2}(:\d{2})?\b)/i.test(lower);
+
       if (startsContextual && baseNoun) {
-        text = `${baseNoun} ${text}`;
+        // e.g., "another for 6pm" → "appointment another for 6pm"
+        text = `${baseNoun} ${text.replace(/^another\s*/i, '')}`.trim();
       }
+
       if (!hasCommandWord) {
-        text = `add ${text}`;
+        // Prefer "schedule" when we have a time and the base noun suggests an event
+        if (hasTime && baseNoun && /(appointment|meeting|event)/i.test(baseNoun)) {
+          text = `schedule ${text}`;
+        } else {
+          text = `add ${text}`;
+        }
       }
+
       return text.trim();
     });
 
