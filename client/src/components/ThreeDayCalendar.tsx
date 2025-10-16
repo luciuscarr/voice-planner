@@ -228,44 +228,44 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end mb-2 gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end mb-2 gap-2">
         <button
           onClick={importCalendar}
-          className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
+          className="flex items-center justify-center space-x-2 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors mobile-tap"
         >
           <Plus className="w-4 h-4" />
-          <span>Import from Google</span>
+          <span className="text-sm">Import from Google</span>
         </button>
         <button
           onClick={exportAll}
-          className="flex items-center space-x-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="flex items-center justify-center space-x-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors mobile-tap"
         >
           <Plus className="w-4 h-4" />
-          <span>Export all</span>
+          <span className="text-sm">Export all</span>
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-scroll">
         {byDay.map(({ day, items }) => (
-          <div key={day.toISOString()} className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-baseline justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">{dayLabel(day)}</h3>
-              <span className="text-sm text-gray-500">{dateLabel(day)}</span>
+          <div key={day.toISOString()} className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="px-3 sm:px-4 py-3 border-b border-border flex items-baseline justify-between">
+              <h3 className="text-base sm:text-lg font-semibold text-card-foreground">{dayLabel(day)}</h3>
+              <span className="text-xs sm:text-sm text-muted-foreground">{dateLabel(day)}</span>
             </div>
-            <div className="p-4 space-y-3 min-h-[300px]">
+            <div className="p-3 sm:p-4 space-y-3 min-h-[200px] sm:min-h-[300px] mobile-scroll">
               {items.length === 0 ? (
-                <div className="text-sm text-gray-400 italic">No events</div>
+                <div className="text-sm text-muted-foreground italic">No events</div>
               ) : (
                 items.map((t) => (
-                  <div key={t.id} className="border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-colors">
+                  <div key={t.id} className="border border-border rounded-lg p-3 hover:border-primary/50 transition-colors mobile-tap">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-xs text-blue-600 font-medium">{timeLabel(t.dueDate) || 'All day'}</div>
-                        <div className="text-sm text-gray-900 font-semibold truncate">{t.title}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs text-primary font-medium">{timeLabel(t.dueDate) || 'All day'}</div>
+                        <div className="text-sm text-card-foreground font-semibold truncate">{t.title}</div>
                         {t.description && (
-                          <div className="text-xs text-gray-500 truncate">{t.description}</div>
+                          <div className="text-xs text-muted-foreground truncate">{t.description}</div>
                         )}
                         {Array.isArray(t.reminders) && t.reminders.length > 0 && (
-                          <div className="mt-1 text-[11px] text-gray-600">Reminders: {t.reminders.map((m, i) => (i === 0 ? `${m}m` : `, ${m}m`))}</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">Reminders: {t.reminders.map((m, i) => (i === 0 ? `${m}m` : `, ${m}m`))}</div>
                         )}
                       </div>
                       <div className="shrink-0 flex items-center gap-1">
@@ -273,7 +273,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
                           onClick={() => deleteItem(t)}
                           title="Delete"
                           aria-label="Delete"
-                          className="p-1.5 rounded-md text-gray-500 hover:text-red-600 transition-colors"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors mobile-tap"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

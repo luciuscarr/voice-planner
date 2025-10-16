@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { HelpCircle, Settings, Mic } from 'lucide-react';
+import { HelpCircle, Settings, Mic, Sun, Moon } from 'lucide-react';
 import { VoiceRecorder } from './components/VoiceRecorder';
 import { TaskList } from './components/TaskList';
 import { ThreeDayCalendar } from './components/ThreeDayCalendar';
@@ -48,6 +48,34 @@ function App() {
   const [showHint, setShowHint] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Dark mode initialization and persistence
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+    
+    setIsDarkMode(shouldBeDark);
+    if (shouldBeDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   // Debug: Log API URL on mount
   useState(() => {
@@ -364,37 +392,49 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background mobile-safe-area">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <Mic className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Mic className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Voice Planner</h1>
-                <p className="text-xs text-gray-500">
+                <h1 className="text-xl font-bold text-foreground">Voice Planner</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">
                   API: {import.meta.env.VITE_API_URL || 'localhost:3001'}
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
               <motion.button
-                onClick={() => setShowHint(true)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={toggleDarkMode}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors mobile-tap"
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </motion.button>
+              
+              <motion.button
+                onClick={() => setShowHint(true)}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors mobile-tap"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Voice Commands"
               >
                 <HelpCircle className="w-5 h-5" />
               </motion.button>
               
               <motion.button
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors mobile-tap"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                title="Settings"
               >
                 <Settings className="w-5 h-5" />
               </motion.button>
@@ -404,16 +444,16 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Voice Recorder Section */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 order-2 lg:order-1">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+              className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6"
             >
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Voice Commands</h2>
+              <h2 className="text-lg font-semibold text-card-foreground mb-4">Voice Commands</h2>
               
               <VoiceRecorder
                 onCommand={handleVoiceCommand}
@@ -425,11 +465,11 @@ function App() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-3 bg-blue-50 rounded-lg"
+                  className="mt-4 p-3 bg-primary/10 rounded-lg"
                 >
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm text-blue-700">Processing voice command...</span>
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-primary">Processing voice command...</span>
                   </div>
                 </motion.div>
               )}
@@ -439,24 +479,24 @@ function App() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-3 bg-gray-50 rounded-lg"
+                  className="mt-4 p-3 bg-muted rounded-lg"
                 >
-                  <p className="text-sm text-gray-600 italic">"{currentTranscript}"</p>
+                  <p className="text-sm text-muted-foreground italic">"{currentTranscript}"</p>
                 </motion.div>
               )}
             </motion.div>
           </div>
 
           {/* Calendar Section */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-1 lg:order-2">
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+              className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6"
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Next 3 Days</h2>
-                <div className="text-xs text-gray-500">Today, Tomorrow, and the next day</div>
+                <h2 className="text-lg font-semibold text-card-foreground">Next 3 Days</h2>
+                <div className="text-xs text-muted-foreground hidden sm:block">Today, Tomorrow, and the next day</div>
               </div>
               <ThreeDayCalendar
                 tasks={tasks}
