@@ -57,7 +57,7 @@ export function findFreeTimeSlots(
   events: CalendarEvent[],
   date: Date,
   minDuration: number = 30, // minimum slot duration in minutes
-  workingHours: { start: number; end: number } = { start: 9, end: 17 } // 9 AM to 5 PM
+  workingHours: { start: number; end: number } = { start: 0, end: 24 } // Full day by default
 ): TimeSlot[] {
   const freeSlots: TimeSlot[] = [];
   
@@ -128,7 +128,7 @@ export function findBestTimeSlot(
   const timeRanges = {
     morning: { start: 6, end: 12 },
     afternoon: { start: 12, end: 17 },
-    evening: { start: 17, end: 22 }
+    evening: { start: 17, end: 23 }
   } as const;
 
   const clampToDuration = (slot: TimeSlot, start: Date): TimeSlot => {
@@ -140,7 +140,6 @@ export function findBestTimeSlot(
   if (preferredTime) {
     const range = timeRanges[preferredTime];
     for (const slot of suitableSlots) {
-      const dayStart = new Date(slot.start);
       const windowStart = new Date(slot.start);
       windowStart.setHours(range.start, 0, 0, 0);
       const windowEnd = new Date(slot.start);
