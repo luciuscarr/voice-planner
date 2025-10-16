@@ -281,6 +281,75 @@ async function parseMultipleCommands(transcript) {
       return cmd;
     });
 
+    // Fallback: convert title-change phrases like "call it X" to applyToLastScheduled title updates
+    parsedCommands = parsedCommands.map(cmd => {
+      const text = cmd?.text || '';
+      const m = text.match(/\b(call it|title it|name it)\s+(.+)$/i);
+      if (m && m[2]) {
+        const title = m[2].trim();
+        return {
+          ...cmd,
+          extractedData: {
+            ...(cmd.extractedData || {}),
+            title,
+            applyToLastScheduled: true
+          }
+        };
+      }
+      return cmd;
+    });
+
+    // Propagate base date across commands when missing (e.g., "today" applies to later fragments)
+    const lowerAll = transcript.toLowerCase();
+    let baseDate = null;
+    if (/\btoday\b/i.test(transcript) || /\btonight\b/i.test(transcript)) {
+      const d = new Date();
+      baseDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    } else if (/\btomorrow\b/i.test(transcript)) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      baseDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    const getDateOnly = (iso) => {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    };
+
+    let lastKnownDate = null;
+    parsedCommands = parsedCommands.map(cmd => {
+      const ed = cmd.extractedData || {};
+      const hasExplicitDate = !!ed.date || !!ed.dueDate;
+      if (ed.dueDate && !ed.date) {
+        const d = new Date(ed.dueDate);
+        if (!isNaN(d.getTime())) {
+          ed.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+      }
+      if (ed.date) {
+        const parts = ed.date.split('-').map(Number);
+        lastKnownDate = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+      } else if (ed.dueDate) {
+        const dd = getDateOnly(ed.dueDate);
+        if (dd) lastKnownDate = dd;
+      }
+
+      // If time present but no date, apply lastKnownDate or baseDate
+      if (!hasExplicitDate && ed.time) {
+        const anchor = lastKnownDate || baseDate;
+        if (anchor) {
+          const [hh, mm] = ed.time.split(':').map(Number);
+          const composed = new Date(anchor);
+          composed.setHours(isNaN(hh) ? 0 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+          ed.dueDate = composed.toISOString();
+          ed.date = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}-${String(anchor.getDate()).padStart(2, '0')}`;
+        }
+      }
+
+      return { ...cmd, extractedData: ed };
+    });
+
     return parsedCommands;
 
   } catch (error) {
