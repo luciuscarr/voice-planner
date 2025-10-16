@@ -189,10 +189,16 @@ router.get('/events', async (req, res) => {
     const userTimeZone = timeZone || 'UTC';
 
     // Determine import window: start of today through end of day + 3 days (hard-capped server-side)
-    // Use local timezone for calculations
+    // Calculate dates in the user's timezone
     const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
+    
+    // Get current date in user's timezone
+    const userDateStr = now.toLocaleDateString("en-CA", { timeZone: userTimeZone }); // YYYY-MM-DD format
+    const [year, month, day] = userDateStr.split('-').map(Number);
+    
+    // Create start of today in user's timezone
+    const startOfToday = new Date(year, month - 1, day, 0, 0, 0, 0);
+    
     const endOfRange = new Date(startOfToday);
     endOfRange.setDate(endOfRange.getDate() + 3);
     endOfRange.setHours(23, 59, 59, 999);
