@@ -44,6 +44,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
       setTranscript(result.transcript);
       onTranscription(result.transcript);
       
+      // Debounce finalization slightly to allow short pauses
       if (result.isFinal) {
         setIsProcessing(true);
         
@@ -65,12 +66,12 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
           onCommand(command);
         }
         
-        // Reset after processing
+        // Reset after processing with a slightly longer delay to avoid cutoffs
         setTimeout(() => {
           setIsProcessing(false);
           setTranscript('');
           reset();
-        }, 1000);
+        }, 1500);
       }
     },
     onError: (error) => {

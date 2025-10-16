@@ -33,6 +33,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
   const [confidence, setConfidence] = useState(0);
   
   const recognitionRef = useRef<any>(null);
+  const keepAliveRef = useRef<boolean>(false);
   const isSupported = typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
 
   const startListening = useCallback(() => {
@@ -42,6 +43,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
     }
 
     try {
+      keepAliveRef.current = true;
       recognitionRef.current.start();
       setIsListening(true);
     } catch (error) {
@@ -51,6 +53,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && isListening) {
+      keepAliveRef.current = false;
       recognitionRef.current.stop();
       setIsListening(false);
     }
@@ -114,7 +117,17 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       };
 
       recognition.onend = () => {
-        setIsListening(false);
+        // Auto-restart to tolerate short pauses when continuous is enabled
+        if (keepAliveRef.current && continuous && recognitionRef.current) {
+          try {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } catch (e) {
+            setIsListening(false);
+          }
+        } else {
+          setIsListening(false);
+        }
       };
     }
   });
