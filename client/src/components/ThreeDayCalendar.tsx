@@ -55,7 +55,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
   });
 
   const dayLabel = (d: Date) => format(d, 'EEE'); // Mon, Tue, Wed
-  const dateLabel = (d: Date) => format(d, 'MMM d');
+  const dateLabel = (d: Date) => format(d, 'MMMM d');
 
   const importCalendar = useCallback(async () => {
     try {
@@ -241,7 +241,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
           className="flex items-center justify-center space-x-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors mobile-tap"
         >
           <Plus className="w-4 h-4" />
-          <span className="text-sm">Export all</span>
+          <span className="text-sm">Export Created Tasks</span>
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-scroll">

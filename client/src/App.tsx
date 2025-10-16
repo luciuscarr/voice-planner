@@ -6,40 +6,11 @@ import { TaskList } from './components/TaskList';
 import { ThreeDayCalendar } from './components/ThreeDayCalendar';
 import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';
-import { fetchCalendarEvents, findFreeTimeSlots, findBestTimeSlot, formatTimeSlot, parseTimePreference } from './utils/calendarHelper';
-
+import { parseIntentAI, checkAIStatus } from '../utils/parseIntentAI';
 
 // Mock data for development
 const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Call dentist for appointment',
-    description: 'Schedule routine cleaning',
-    completed: false,
-    priority: 'medium',
-    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Prepare presentation for Monday meeting',
-    description: 'Create slides for quarterly review',
-    completed: false,
-    priority: 'high',
-    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Buy groceries',
-    description: 'Milk, bread, eggs, vegetables',
-    completed: true,
-    priority: 'low',
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
+
 ];
 
 function App() {
@@ -402,10 +373,7 @@ function App() {
                 <Mic className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Voice Planner</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">
-                  API: {import.meta.env.VITE_API_URL || 'localhost:3001'}
-                </p>
+                <h1 className="text-xl font-bold text-foreground">Day Planner</h1>
               </div>
             </div>
             
@@ -455,10 +423,40 @@ function App() {
             >
               <h2 className="text-lg font-semibold text-card-foreground mb-4">Voice Commands</h2>
               
+
+              
               <VoiceRecorder
                 onCommand={handleVoiceCommand}
                 onTranscription={setCurrentTranscript}
               />
+
+                            {/* Current Transcript */}
+              {currentTranscript && !isProcessing && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-3 bg-muted rounded-lg"
+                >
+                  <p className="text-sm text-muted-foreground italic">"{currentTranscript}"</p>
+                </motion.div>
+              )}
+
+              {/* Reset Button */}
+              {(currentTranscript || isProcessing) && (
+                <div className="flex justify-center mt-2">
+                  <motion.button
+                    onClick={() => {
+                      setCurrentTranscript('');
+                      setIsProcessing(false);
+                    }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Clear
+                  </motion.button>
+                </div>
+              )}
               
               {/* Processing Indicator */}
               {isProcessing && (
@@ -474,16 +472,7 @@ function App() {
                 </motion.div>
               )}
               
-              {/* Current Transcript */}
-              {currentTranscript && !isProcessing && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-3 bg-muted rounded-lg"
-                >
-                  <p className="text-sm text-muted-foreground italic">"{currentTranscript}"</p>
-                </motion.div>
-              )}
+
             </motion.div>
           </div>
 

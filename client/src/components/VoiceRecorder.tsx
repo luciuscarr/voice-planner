@@ -7,6 +7,7 @@ import { parseIntent } from '../utils/parseIntent';
 import { VoiceCommand } from '@shared/types';
 import { transcribeFallback } from '../utils/transcribeFallback';
 
+
 interface VoiceRecorderProps {
   onCommand: (command: VoiceCommand | VoiceCommand[]) => void;
   onTranscription: (text: string) => void;
@@ -206,34 +207,17 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
             {isProcessing ? 'Processing...' : isRecording ? 'Listening...' : 'Click to start recording'}
           </p>
           {aiAvailable && (
-            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+            <span className="px-2 py-1 text-xs font-medium bg-gradient-to-r from-purple-400 to-fuchsia-500 text-white rounded-full border border-purple-300 shadow-sm">
               AI Powered
             </span>
+
           )}
         </div>
         
-        {transcript && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-100 rounded-lg p-3 max-w-md"
-          >
-            <p className="text-sm text-gray-700 italic">"{transcript}"</p>
-          </motion.div>
-        )}
+
       </motion.div>
 
-      {/* Reset Button */}
-      {(transcript || isProcessing) && (
-        <motion.button
-          onClick={handleReset}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          Clear
-        </motion.button>
-      )}
+
     </div>
   );
 };
