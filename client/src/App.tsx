@@ -6,7 +6,9 @@ import { TaskList } from './components/TaskList';
 import { ThreeDayCalendar } from './components/ThreeDayCalendar';
 import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';
-import { parseIntentAI, checkAIStatus } from '../utils/parseIntentAI';
+import { parseIntentAI, checkAIStatus } from './utils/parseIntentAI';
+import { fetchCalendarEvents, findFreeTimeSlots, findBestTimeSlot, formatTimeSlot, parseTimePreference } from './utils/calendarHelper';
+
 
 // Mock data for development
 const mockTasks: Task[] = [
