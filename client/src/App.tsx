@@ -66,138 +66,158 @@ function App() {
     setIsProcessing(true);
     
     const commands = Array.isArray(command) ? command : [command];
-    
-    // Check if any command is a "find time" request
-    const findTimeCommand = commands.find(cmd => cmd.intent === 'findTime');
-    
-    if (findTimeCommand) {
-      await handleFindTimeCommand(findTimeCommand);
-      setIsProcessing(false);
-      return;
-    }
-    
-    // Process regular task commands
-    setTimeout(() => {
-      const newTasks: Task[] = [];
-      // Keep a batch-local pointer so multi-part utterances can reference earlier item in same batch
-      let batchLastScheduledId: string | null = lastScheduledTaskId;
-      // Capture reminder requests that appear before the task in the same utterance
-      let pendingReminders: number[] | null = null;
-      
-      commands.forEach((cmd, index) => {
-        // Treat explicit reminder intent or applyToLastScheduled flag as a reminder update
-        const isReminderUpdate = (cmd.intent === 'reminder') || !!cmd.extractedData?.applyToLastScheduled || /^(remind|notify)/i.test(cmd.text);
-        if (isReminderUpdate && cmd.extractedData?.reminders) {
-          const offsets = cmd.extractedData.reminders;
-          if (batchLastScheduledId) {
-            // Prefer updating the task created in this batch if present
-            const idx = newTasks.findIndex(t => t.id === batchLastScheduledId);
-            if (idx >= 0) {
-              const existing = Array.isArray(newTasks[idx].reminders) ? newTasks[idx].reminders! : [];
-              const merged = Array.from(new Set([ ...existing, ...offsets ]));
-              newTasks[idx] = { ...newTasks[idx], reminders: merged, updatedAt: new Date().toISOString() };
-            } else {
-              // Otherwise update an existing task in state
-              setTasks(prev => prev.map(t => {
-                if (t.id !== batchLastScheduledId) return t;
-                const existing = Array.isArray(t.reminders) ? t.reminders : [];
-                const next = Array.from(new Set([ ...existing, ...offsets ]));
-                return { ...t, reminders: next, updatedAt: new Date().toISOString() };
-              }));
-            }
-          } else {
-            // No task created yet in this batch; hold onto reminders to apply to the next scheduled task created now
-            const existing = Array.isArray(pendingReminders) ? pendingReminders : [];
-            pendingReminders = Array.from(new Set([ ...existing, ...offsets ]));
-          }
-          return;
-        }
-        
-        if (cmd.intent === 'task' || cmd.intent === 'reminder' || cmd.intent === 'note' || cmd.intent === 'schedule') {
-          const newTask: Task = {
-            id: `${Date.now()}-${index}`,
-            title: cmd.extractedData?.title || cmd.text,
-            description: cmd.intent === 'note' ? 'Voice note' : undefined,
-            completed: false,
-            priority: cmd.extractedData?.priority || 'medium',
-            // Merge any pending reminders captured earlier in this utterance with reminders on this command
-            reminders: (() => {
-              const r1 = cmd.extractedData?.reminders || [];
-              const r2 = pendingReminders || [];
-              const merged = Array.from(new Set([...r1, ...r2]));
-              return merged.length > 0 ? merged : undefined;
-            })(),
-            // Build dueDate in user's LOCAL timezone from AI's date/time when available
-            dueDate: (() => {
-              const due = cmd.extractedData?.dueDate;
-              const date = cmd.extractedData?.date; // YYYY-MM-DD
-              const time = cmd.extractedData?.time; // HH:mm (24h)
-              
-              // Prefer composing from date/time to avoid server timezone skew
-              if (date || time) {
-                const now = new Date();
-                let year: number;
-                let monthIndex: number;
-                let day: number;
-                
-                if (date) {
-                  const [y, mo, d] = date.split('-').map(Number);
-                  year = y;
-                  monthIndex = (mo || 1) - 1;
-                  day = d || 1;
-                } else {
-                  year = now.getFullYear();
-                  monthIndex = now.getMonth();
-                  day = now.getDate();
-                }
-                
-                let hours = 0;
-                let minutes = 0;
-                if (time) {
-                  const [h, m] = time.split(':').map(Number);
-                  hours = h || 0;
-                  minutes = m || 0;
-                }
-                
-                // Create local date from components to preserve user's timezone
-                const local = new Date(year, monthIndex, day, hours, minutes, 0, 0);
-                return local.toISOString();
-              }
-              
-              // Fallback to server-provided dueDate if no structured fields
-              if (due) return due;
-              return undefined;
-            })(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          
-          newTasks.push(newTask);
+    const findTimeCommands = commands.filter(cmd => cmd.intent === 'findTime');
+    const actionable = commands.filter(cmd => cmd.intent !== 'findTime');
 
-          // Track last scheduled item when there is a due date (batch-local)
-          if (newTask.dueDate) {
-            batchLastScheduledId = newTask.id;
-            // Clear pending reminders after applying to the created task
-            pendingReminders = null;
-          }
-        }
-      });
-      
-      if (newTasks.length > 0) {
-        setTasks(prev => [...newTasks, ...prev]);
-        // Persist batch-local pointer globally
+    const newTasks: Task[] = [];
+    // Keep a batch-local pointer so multi-part utterances can reference earlier item in same batch
+    let batchLastScheduledId: string | null = lastScheduledTaskId;
+    // Capture reminder requests that appear before the task in the same utterance
+    let pendingReminders: number[] | null = null;
+
+    actionable.forEach((cmd, index) => {
+      // Apply-to-last updates: title and/or reminders
+      const applyToLast = !!cmd.extractedData?.applyToLastScheduled;
+      if (applyToLast) {
         if (batchLastScheduledId) {
-          setLastScheduledTaskId(batchLastScheduledId);
+          const titleUpdate = cmd.extractedData?.title;
+          const reminderOffsets = cmd.extractedData?.reminders;
+          const idx = newTasks.findIndex(t => t.id === batchLastScheduledId);
+          if (idx >= 0) {
+            const updated: Task = { ...newTasks[idx] };
+            if (titleUpdate) updated.title = titleUpdate;
+            if (reminderOffsets && reminderOffsets.length > 0) {
+              const existing = Array.isArray(updated.reminders) ? updated.reminders : [];
+              updated.reminders = Array.from(new Set([...existing, ...reminderOffsets]));
+            }
+            updated.updatedAt = new Date().toISOString();
+            newTasks[idx] = updated;
+          } else {
+            setTasks(prev => prev.map(t => {
+              if (t.id !== batchLastScheduledId) return t;
+              const updated: Task = { ...t };
+              if (titleUpdate) updated.title = titleUpdate;
+              if (reminderOffsets && reminderOffsets.length > 0) {
+                const existing = Array.isArray(updated.reminders) ? updated.reminders : [];
+                updated.reminders = Array.from(new Set([...existing, ...reminderOffsets]));
+              }
+              updated.updatedAt = new Date().toISOString();
+              return updated;
+            }));
+          }
+        } else if (cmd.extractedData?.reminders) {
+          const existing = Array.isArray(pendingReminders) ? pendingReminders : [];
+          pendingReminders = Array.from(new Set([ ...existing, ...cmd.extractedData.reminders ]));
         }
-        
-        // Show success message
-        if (newTasks.length > 1) {
-          console.log(`✅ Created ${newTasks.length} tasks!`);
+        return;
+      }
+
+      // Explicit reminder intent without applyToLast
+      const isReminderUpdate = (cmd.intent === 'reminder') || /^(remind|notify)/i.test(cmd.text);
+      if (isReminderUpdate && cmd.extractedData?.reminders) {
+        const offsets = cmd.extractedData.reminders;
+        if (batchLastScheduledId) {
+          const idx = newTasks.findIndex(t => t.id === batchLastScheduledId);
+          if (idx >= 0) {
+            const existing = Array.isArray(newTasks[idx].reminders) ? newTasks[idx].reminders! : [];
+            const merged = Array.from(new Set([ ...existing, ...offsets ]));
+            newTasks[idx] = { ...newTasks[idx], reminders: merged, updatedAt: new Date().toISOString() };
+          } else {
+            setTasks(prev => prev.map(t => {
+              if (t.id !== batchLastScheduledId) return t;
+              const existing = Array.isArray(t.reminders) ? t.reminders : [];
+              const next = Array.from(new Set([ ...existing, ...offsets ]));
+              return { ...t, reminders: next, updatedAt: new Date().toISOString() };
+            }));
+          }
+        } else {
+          const existing = Array.isArray(pendingReminders) ? pendingReminders : [];
+          pendingReminders = Array.from(new Set([ ...existing, ...offsets ]));
         }
+        return;
       }
       
-      setIsProcessing(false);
-    }, 1000);
+      if (cmd.intent === 'task' || cmd.intent === 'reminder' || cmd.intent === 'note' || cmd.intent === 'schedule') {
+        const newTask: Task = {
+          id: `${Date.now()}-${index}`,
+          title: cmd.extractedData?.title || cmd.text,
+          description: cmd.intent === 'note' ? 'Voice note' : undefined,
+          completed: false,
+          priority: cmd.extractedData?.priority || 'medium',
+          // Merge any pending reminders captured earlier in this utterance with reminders on this command
+          reminders: (() => {
+            const r1 = cmd.extractedData?.reminders || [];
+            const r2 = pendingReminders || [];
+            const merged = Array.from(new Set([...r1, ...r2]));
+            return merged.length > 0 ? merged : undefined;
+          })(),
+          // Build dueDate in user's LOCAL timezone from AI's date/time when available
+          dueDate: (() => {
+            const due = cmd.extractedData?.dueDate;
+            const date = cmd.extractedData?.date; // YYYY-MM-DD
+            const time = cmd.extractedData?.time; // HH:mm (24h)
+            
+            // Prefer composing from date/time to avoid server timezone skew
+            if (date || time) {
+              const now = new Date();
+              let year: number;
+              let monthIndex: number;
+              let day: number;
+              
+              if (date) {
+                const [y, mo, d] = date.split('-').map(Number);
+                year = y;
+                monthIndex = (mo || 1) - 1;
+                day = d || 1;
+              } else {
+                year = now.getFullYear();
+                monthIndex = now.getMonth();
+                day = now.getDate();
+              }
+              
+              let hours = 0;
+              let minutes = 0;
+              if (time) {
+                const [h, m] = time.split(':').map(Number);
+                hours = h || 0;
+                minutes = m || 0;
+              }
+              
+              // Create local date from components to preserve user's timezone
+              const local = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+              return local.toISOString();
+            }
+            
+            // Fallback to server-provided dueDate if no structured fields
+            if (due) return due;
+            return undefined;
+          })(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        newTasks.push(newTask);
+
+        // Track last scheduled item when there is a due date (batch-local)
+        if (newTask.dueDate) {
+          batchLastScheduledId = newTask.id;
+          // Clear pending reminders after applying to the created task
+          pendingReminders = null;
+        }
+      }
+    });
+
+    if (newTasks.length > 0) {
+      setTasks(prev => [...newTasks, ...prev]);
+      if (batchLastScheduledId) setLastScheduledTaskId(batchLastScheduledId);
+    }
+
+    // Handle find-time commands afterwards so they consider newly-created tasks as busy blocks
+    for (const ft of findTimeCommands) {
+      await handleFindTimeCommand(ft);
+    }
+
+    setIsProcessing(false);
   };
 
   // Handle "find time" commands
