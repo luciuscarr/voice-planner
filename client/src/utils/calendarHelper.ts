@@ -21,8 +21,9 @@ export async function fetchCalendarEvents(
 ): Promise<CalendarEvent[]> {
   try {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const response = await fetch(
-      `${apiUrl}/api/calendar/events?accessToken=${accessToken}&timeMin=${startDate.toISOString()}&timeMax=${endDate.toISOString()}`
+      `${apiUrl}/api/calendar/events?accessToken=${accessToken}&timeMin=${startDate.toISOString()}&timeMax=${endDate.toISOString()}&timeZone=${encodeURIComponent(tz)}`
     );
 
     if (!response.ok) {
