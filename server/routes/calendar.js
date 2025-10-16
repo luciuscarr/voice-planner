@@ -203,6 +203,14 @@ router.get('/events', async (req, res) => {
     endOfRange.setDate(endOfRange.getDate() + 3);
     endOfRange.setHours(23, 59, 59, 999);
 
+    console.log('Calendar import debug:', {
+      userTimeZone,
+      userDateStr,
+      startOfToday: startOfToday.toISOString(),
+      endOfRange: endOfRange.toISOString(),
+      targetCalendarIds
+    });
+
     // If client provided bounds, use them but cap to our enforced window
     const clientMin = timeMin ? new Date(String(timeMin)) : null;
     const clientMax = timeMax ? new Date(String(timeMax)) : null;
@@ -236,6 +244,18 @@ router.get('/events', async (req, res) => {
       createdAt: e.created || new Date().toISOString(),
       updatedAt: e.updated || new Date().toISOString(),
     }));
+
+    console.log('Calendar import results:', {
+      totalEvents: allEvents.length,
+      totalTasks: tasks.length,
+      from,
+      to,
+      events: allEvents.map(e => ({
+        title: e.summary,
+        start: e.start?.dateTime || e.start?.date,
+        calendarId: e._calendarId
+      }))
+    });
 
     res.json({ events: allEvents, tasks });
   } catch (error) {
