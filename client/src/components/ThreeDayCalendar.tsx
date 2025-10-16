@@ -99,7 +99,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
       // Range: today through the next 3 days
       const start = getStartOfDay(new Date());
       const end = getEndOfDay(new Date(start));
-      end.setDate(end.getDate() + 3);
+      end.setDate(end.getDate() + 4);
 
       const imported = await importCalendarAsTasks(token, start, end);
       if (imported.length > 0) {

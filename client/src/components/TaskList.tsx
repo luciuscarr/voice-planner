@@ -136,7 +136,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
-      end.setDate(end.getDate() + 3);
+      end.setDate(end.getDate() + 4);
       end.setHours(23, 59, 59, 999);
       const imported = await importCalendarAsTasks(token, start, end);
 
