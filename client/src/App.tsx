@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, Settings, Mic, Sun, Moon } from 'lucide-react';
 import { VoiceRecorder } from './components/VoiceRecorder';
 import { TaskList } from './components/TaskList';
@@ -22,6 +22,7 @@ function App() {
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   // Dark mode initialization and persistence
   useEffect(() => {
@@ -219,6 +220,12 @@ function App() {
     }
 
     setIsProcessing(false);
+    
+    // Fade out transcript after processing is complete
+    setTimeout(() => {
+      setShowTranscript(false);
+      setCurrentTranscript('');
+    }, 2000);
   };
 
   // Handle "find time" commands
@@ -429,36 +436,64 @@ function App() {
               
               <VoiceRecorder
                 onCommand={handleVoiceCommand}
-                onTranscription={setCurrentTranscript}
+                onTranscription={(transcript) => {
+                  setCurrentTranscript(transcript);
+                  if (transcript) setShowTranscript(true);
+                }}
               />
 
                             {/* Current Transcript */}
-              {currentTranscript && !isProcessing && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-3 bg-muted rounded-lg"
-                >
-                  <p className="text-sm text-muted-foreground italic">"{currentTranscript}"</p>
-                </motion.div>
-              )}
+              <motion.div
+                animate={{ height: showTranscript && currentTranscript ? "auto" : 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <AnimatePresence>
+                  {showTranscript && currentTranscript && (
+                    <motion.div
+                      key="transcript"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-4 p-3 bg-muted rounded-lg"
+                    >
+                      <p className="text-sm text-muted-foreground italic">"{currentTranscript}"</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
 
               {/* Reset Button */}
-              {(currentTranscript || isProcessing) && (
-                <div className="flex justify-center mt-2">
-                  <motion.button
-                    onClick={() => {
-                      setCurrentTranscript('');
-                      setIsProcessing(false);
-                    }}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Clear
-                  </motion.button>
-                </div>
-              )}
+              <motion.div
+                animate={{ height: showTranscript && (currentTranscript || isProcessing) ? "auto" : 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <AnimatePresence>
+                  {showTranscript && (currentTranscript || isProcessing) && (
+                    <motion.div
+                      key="reset-button"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex justify-center mt-2"
+                    >
+                      <motion.button
+                        onClick={() => {
+                          setCurrentTranscript('');
+                          setIsProcessing(false);
+                          setShowTranscript(false);
+                        }}
+                        className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Clear
+                      </motion.button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
               
               {/* Processing Indicator */}
               {isProcessing && (
