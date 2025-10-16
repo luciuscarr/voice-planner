@@ -339,7 +339,10 @@ async function parseMultipleCommands(transcript) {
       if (!hasExplicitDate && ed.time) {
         const anchor = lastKnownDate || baseDate;
         if (anchor) {
-          const [hh, mm] = ed.time.split(':').map(Number);
+          let [hh, mm] = ed.time.split(':').map(Number);
+          // If transcript suggests PM/tonight/evening and hour is < 12, bias to PM
+          const pmHint = /(pm|p\.m\.|tonight|evening)/i.test(transcript);
+          if (pmHint && !isNaN(hh) && hh >= 1 && hh <= 11) hh += 12;
           const composed = new Date(anchor);
           composed.setHours(isNaN(hh) ? 0 : hh, isNaN(mm) ? 0 : mm, 0, 0);
           ed.dueDate = composed.toISOString();
