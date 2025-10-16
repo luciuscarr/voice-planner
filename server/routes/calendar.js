@@ -163,7 +163,7 @@ router.post('/sync-task', async (req, res) => {
 // Get Google Calendar events
 router.get('/events', async (req, res) => {
   try {
-    const { accessToken, timeMin, timeMax } = req.query;
+    const { accessToken, timeMin, timeMax, timeZone } = req.query;
     
     if (!accessToken) {
       return res.status(400).json({ error: 'Access token required' });
@@ -185,7 +185,11 @@ router.get('/events', async (req, res) => {
     // If no owned calendars returned for some reason, fallback to primary
     const targetCalendarIds = calendars.length > 0 ? calendars : ['primary'];
 
+    // Use client-provided timezone or default to UTC
+    const userTimeZone = timeZone || 'UTC';
+
     // Determine import window: start of today through end of day + 3 days (hard-capped server-side)
+    // Use local timezone for calculations
     const now = new Date();
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
@@ -208,6 +212,7 @@ router.get('/events', async (req, res) => {
           timeMax: to,
           singleEvents: true,
           orderBy: 'startTime',
+          timeZone: userTimeZone,
         }).then((r) => ({ calId, items: r.data.items || [] }))
       )
     );
