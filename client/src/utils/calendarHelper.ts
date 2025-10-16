@@ -192,7 +192,7 @@ export function parseTimePreference(text: string): {
     result.preference = 'morning';
   } else if (lowerText.includes('afternoon')) {
     result.preference = 'afternoon';
-  } else if (lowerText.includes('evening')) {
+  } else if (lowerText.includes('evening') || lowerText.includes('tonight')) {
     result.preference = 'evening';
   }
 
