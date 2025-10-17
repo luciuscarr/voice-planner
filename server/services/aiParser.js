@@ -1,9 +1,15 @@
 const OpenAI = require('openai');
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client only if API key is available
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  console.log('✅ OpenAI API initialized');
+} else {
+  console.log('⚠️ OpenAI API key not found - using fallback parsing only');
+}
 
 // Fallback: extract reminder offsets like "30 minutes and an hour before"
 function extractReminderOffsets(text) {
@@ -59,12 +65,22 @@ function parseWeekdayInTranscript(transcript) {
   
   for (const [dayName, dayIndex] of Object.entries(weekdays)) {
     if (lowerTranscript.includes(dayName)) {
-      // Use local timezone to avoid UTC issues
-      const today = new Date();
-      const currentDay = today.getDay();
+      // Use PST/PDT timezone for consistent date calculation
+      const now = new Date();
+      
+      // Convert to PST/PDT (UTC-8 or UTC-7)
+      const pstOffset = -8 * 60; // PST is UTC-8
+      const pdtOffset = -7 * 60; // PDT is UTC-7 (daylight saving)
+      
+      // Simple daylight saving check (rough approximation)
+      const isDST = now.getMonth() >= 2 && now.getMonth() <= 10; // March to November
+      const offset = isDST ? pdtOffset : pstOffset;
+      
+      const pstTime = new Date(now.getTime() + (offset * 60 * 1000));
+      const currentDay = pstTime.getDay();
       
       console.log(`Debug: Looking for ${dayName} (index ${dayIndex}), current day is ${currentDay}`);
-      console.log(`Debug: Server timezone - today: ${today.toISOString()}, local: ${today.toLocaleDateString()}`);
+      console.log(`Debug: PST time - ${pstTime.toISOString()}, local: ${pstTime.toLocaleDateString()}`);
       
       // Calculate days until target day
       let daysUntilTarget = dayIndex - currentDay;
@@ -77,8 +93,8 @@ function parseWeekdayInTranscript(transcript) {
         daysUntilTarget = 0;
       }
       
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + daysUntilTarget);
+      const targetDate = new Date(pstTime);
+      targetDate.setDate(pstTime.getDate() + daysUntilTarget);
       
       const result = targetDate.toISOString().split('T')[0];
       console.log(`Debug: Target date calculated as ${result} (${targetDate.toDateString()})`);
@@ -134,6 +150,38 @@ function parseTimeInTranscript(transcript) {
  * @returns {Promise<Object>} Parsed command with intent and extracted data
  */
 async function parseVoiceCommand(transcript) {
+  // If OpenAI is not available, use fallback parsing immediately
+  if (!openai) {
+    console.log('Using fallback parser (no OpenAI API key)');
+    const weekdayDate = parseWeekdayInTranscript(transcript);
+    const timeMatch = parseTimeInTranscript(transcript);
+    
+    // Clean up the title by removing command words and time references
+    let cleanTitle = transcript
+      .replace(/\b(schedule|appointment|meeting|event|for|at)\b/gi, '')
+      .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
+      .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
+      .trim();
+    
+    // If title is empty or just whitespace, use a default
+    if (!cleanTitle || cleanTitle.length < 2) {
+      cleanTitle = 'Appointment';
+    }
+    
+    return {
+      text: transcript,
+      intent: 'schedule',
+      confidence: 0.5,
+      extractedData: {
+        title: cleanTitle,
+        date: weekdayDate,
+        time: timeMatch,
+        priority: 'medium'
+      },
+      error: 'Using fallback parser (no OpenAI API key)'
+    };
+  }
+  
   try {
     const now = new Date();
     const currentDateTime = now.toISOString();
