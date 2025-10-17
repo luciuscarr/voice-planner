@@ -63,24 +63,51 @@ function parseWeekdayInTranscript(transcript) {
   
   const lowerTranscript = transcript.toLowerCase();
   
+  // First check for specific dates like "October 18th", "Oct 18", "18th"
+  const datePatterns = [
+    /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?/i,
+    /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})(?:st|nd|rd|th)?/i,
+    /(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)/i,
+    /(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i
+  ];
+  
+  for (const pattern of datePatterns) {
+    const match = lowerTranscript.match(pattern);
+    if (match) {
+      const monthNames = {
+        'january': 0, 'jan': 0, 'february': 1, 'feb': 1, 'march': 2, 'mar': 2,
+        'april': 3, 'apr': 3, 'may': 4, 'june': 5, 'jun': 5, 'july': 6, 'jul': 6,
+        'august': 7, 'aug': 7, 'september': 8, 'sep': 8, 'october': 9, 'oct': 9,
+        'november': 10, 'nov': 10, 'december': 11, 'dec': 11
+      };
+      
+      let month, day;
+      if (match[1] in monthNames) {
+        month = monthNames[match[1]];
+        day = parseInt(match[2]);
+      } else {
+        month = monthNames[match[2]];
+        day = parseInt(match[1]);
+      }
+      
+      const currentYear = new Date().getFullYear();
+      const targetDate = new Date(currentYear, month, day);
+      
+      console.log(`Debug: Found specific date - ${match[0]} -> ${targetDate.toISOString().split('T')[0]}`);
+      console.log(`Debug: Specific date details - month: ${month}, day: ${day}, year: ${currentYear}`);
+      return targetDate.toISOString().split('T')[0];
+    }
+  }
+  
+  // Then check for weekdays
   for (const [dayName, dayIndex] of Object.entries(weekdays)) {
     if (lowerTranscript.includes(dayName)) {
-      // Use PST/PDT timezone for consistent date calculation
+      // Use local timezone for consistent date calculation
       const now = new Date();
-      
-      // Convert to PST/PDT (UTC-8 or UTC-7)
-      const pstOffset = -8 * 60; // PST is UTC-8
-      const pdtOffset = -7 * 60; // PDT is UTC-7 (daylight saving)
-      
-      // Simple daylight saving check (rough approximation)
-      const isDST = now.getMonth() >= 2 && now.getMonth() <= 10; // March to November
-      const offset = isDST ? pdtOffset : pstOffset;
-      
-      const pstTime = new Date(now.getTime() + (offset * 60 * 1000));
-      const currentDay = pstTime.getDay();
+      const currentDay = now.getDay();
       
       console.log(`Debug: Looking for ${dayName} (index ${dayIndex}), current day is ${currentDay}`);
-      console.log(`Debug: PST time - ${pstTime.toISOString()}, local: ${pstTime.toLocaleDateString()}`);
+      console.log(`Debug: Current time - ${now.toISOString()}, local: ${now.toLocaleDateString()}`);
       
       // Calculate days until target day
       let daysUntilTarget = dayIndex - currentDay;
@@ -93,8 +120,8 @@ function parseWeekdayInTranscript(transcript) {
         daysUntilTarget = 0;
       }
       
-      const targetDate = new Date(pstTime);
-      targetDate.setDate(pstTime.getDate() + daysUntilTarget);
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() + daysUntilTarget);
       
       const result = targetDate.toISOString().split('T')[0];
       console.log(`Debug: Target date calculated as ${result} (${targetDate.toDateString()})`);
@@ -115,18 +142,28 @@ function parseWeekdayInTranscript(transcript) {
 function parseTimeInTranscript(transcript) {
   const lowerTranscript = transcript.toLowerCase();
   
-  // Match patterns like "8 am", "2 pm", "8:30 am", "2:15 pm"
+  console.log(`Debug: Parsing time from "${transcript}" (lowercase: "${lowerTranscript}")`);
+  
+  // Match patterns like "8 am", "2 pm", "8:30 am", "2:15 pm", "8pm", "2pm"
   const timePatterns = [
     /(\d{1,2}):(\d{2})\s*(am|pm)/i,
-    /(\d{1,2})\s*(am|pm)/i
+    /(\d{1,2})\s*(am|pm)/i,
+    /(\d{1,2}):(\d{2})(am|pm)/i,
+    /(\d{1,2})(am|pm)/i
   ];
   
-  for (const pattern of timePatterns) {
+  for (let i = 0; i < timePatterns.length; i++) {
+    const pattern = timePatterns[i];
     const match = lowerTranscript.match(pattern);
+    console.log(`Debug: Pattern ${i + 1} (${pattern}): ${match ? 'MATCH' : 'NO MATCH'}`);
+    
     if (match) {
+      console.log(`Debug: Match groups:`, match);
       let hours = parseInt(match[1]);
       let minutes = match[2] ? parseInt(match[2]) : 0;
       const period = match[3] || match[2];
+      
+      console.log(`Debug: Extracted - hours: ${hours}, minutes: ${minutes}, period: ${period}`);
       
       // Convert to 24-hour format
       if (period === 'pm' && hours !== 12) {
@@ -136,11 +173,12 @@ function parseTimeInTranscript(transcript) {
       }
       
       const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      console.log(`Debug: Parsed time "${transcript}" as ${timeString}`);
+      console.log(`Debug: Final time string: ${timeString}`);
       return timeString;
     }
   }
   
+  console.log(`Debug: No time pattern matched for "${transcript}"`);
   return null;
 }
 
@@ -281,7 +319,9 @@ Parse the user's voice command and return a JSON object with the following STRIC
       transcript: transcript,
       cleanTitle: cleanTitle,
       weekdayDate: weekdayDate,
-      timeMatch: timeMatch
+      timeMatch: timeMatch,
+      hasDate: !!weekdayDate,
+      hasTime: !!timeMatch
     });
     
     return {
