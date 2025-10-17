@@ -64,6 +64,7 @@ function parseWeekdayInTranscript(transcript) {
       const currentDay = today.getDay();
       
       console.log(`Debug: Looking for ${dayName} (index ${dayIndex}), current day is ${currentDay}`);
+      console.log(`Debug: Server timezone - today: ${today.toISOString()}, local: ${today.toLocaleDateString()}`);
       
       // Calculate days until target day
       let daysUntilTarget = dayIndex - currentDay;
@@ -81,6 +82,7 @@ function parseWeekdayInTranscript(transcript) {
       
       const result = targetDate.toISOString().split('T')[0];
       console.log(`Debug: Target date calculated as ${result} (${targetDate.toDateString()})`);
+      console.log(`Debug: Target date day of week: ${targetDate.getDay()}`);
       
       return result; // Return YYYY-MM-DD
     }

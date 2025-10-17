@@ -29,7 +29,23 @@ function withinDay(due?: string, day?: Date): boolean {
   if (!due || !day) return false;
   const dt = new Date(due);
   if (isNaN(dt.getTime())) return false;
-  return dt >= getStartOfDay(day) && dt <= getEndOfDay(day);
+  
+  const startOfDay = getStartOfDay(day);
+  const endOfDay = getEndOfDay(day);
+  const isWithin = dt >= startOfDay && dt <= endOfDay;
+  
+  // Debug logging for Saturday tasks
+  if (day && day.getDay() === 6) { // Saturday
+    console.log('Saturday debug:', {
+      taskDate: dt.toISOString(),
+      dayStart: startOfDay.toISOString(),
+      dayEnd: endOfDay.toISOString(),
+      isWithin,
+      dayOfWeek: day.getDay()
+    });
+  }
+  
+  return isWithin;
 }
 
 function timeLabel(iso?: string): string {
@@ -56,14 +72,18 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
     if (day.getDate() === new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).getDate()) {
       console.log('Third day debug:', {
         day: day.toISOString(),
+        dayStart: getStartOfDay(day).toISOString(),
+        dayEnd: getEndOfDay(day).toISOString(),
         allTasks: tasks.length,
         tasksWithDueDate: tasks.filter(t => t.dueDate).length,
         itemsForThisDay: items.length,
-        tasksForThisDay: tasks.filter(t => {
-          if (!t.dueDate) return false;
-          const taskDate = new Date(t.dueDate);
-          return taskDate >= getStartOfDay(day) && taskDate <= getEndOfDay(day);
-        })
+        recentTasks: tasks.slice(0, 3).map(t => ({
+          id: t.id,
+          title: t.title,
+          dueDate: t.dueDate,
+          taskDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
+          isWithinDay: t.dueDate ? withinDay(t.dueDate, day) : false
+        }))
       });
     }
     

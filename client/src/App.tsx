@@ -188,6 +188,18 @@ function App() {
               
               // Create local date from components to preserve user's timezone
               const local = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+              
+              // Debug logging for Saturday appointments
+              if (local.getDay() === 6) { // Saturday
+                console.log('Saturday appointment debug:', {
+                  inputDate: date,
+                  inputTime: time,
+                  localDate: local.toISOString(),
+                  localDateString: local.toDateString(),
+                  dayOfWeek: local.getDay()
+                });
+              }
+              
               return local.toISOString();
             }
             
