@@ -41,7 +41,7 @@ function timeLabel(iso?: string): string {
 
 export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSync, onUnsync, onImportTasks, onDelete }) => {
   const today = getStartOfDay(new Date());
-  const days = [0, 1, 2].map((offset) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset));
+  const days = [0, 1, 2, 3].map((offset) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset));
 
   const byDay = days.map((day) => {
     const items = tasks
@@ -244,7 +244,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
           <span className="text-sm">Export Created Tasks</span>
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-scroll">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mobile-scroll">
         {byDay.map(({ day, items }) => (
           <div key={day.toISOString()} className="bg-card rounded-lg shadow-sm border border-border">
             <div className="px-3 sm:px-4 py-3 border-b border-border flex items-baseline justify-between">
