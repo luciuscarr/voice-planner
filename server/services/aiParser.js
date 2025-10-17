@@ -59,8 +59,11 @@ function parseWeekdayInTranscript(transcript) {
   
   for (const [dayName, dayIndex] of Object.entries(weekdays)) {
     if (lowerTranscript.includes(dayName)) {
+      // Use local timezone to avoid UTC issues
       const today = new Date();
       const currentDay = today.getDay();
+      
+      console.log(`Debug: Looking for ${dayName} (index ${dayIndex}), current day is ${currentDay}`);
       
       // Calculate days until target day
       let daysUntilTarget = dayIndex - currentDay;
@@ -76,7 +79,47 @@ function parseWeekdayInTranscript(transcript) {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + daysUntilTarget);
       
-      return targetDate.toISOString().split('T')[0]; // Return YYYY-MM-DD
+      const result = targetDate.toISOString().split('T')[0];
+      console.log(`Debug: Target date calculated as ${result} (${targetDate.toDateString()})`);
+      
+      return result; // Return YYYY-MM-DD
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Parse time in transcript and return HH:mm format
+ * @param {string} transcript - The voice transcript
+ * @returns {string|null} Time in HH:mm format or null
+ */
+function parseTimeInTranscript(transcript) {
+  const lowerTranscript = transcript.toLowerCase();
+  
+  // Match patterns like "8 am", "2 pm", "8:30 am", "2:15 pm"
+  const timePatterns = [
+    /(\d{1,2}):(\d{2})\s*(am|pm)/i,
+    /(\d{1,2})\s*(am|pm)/i
+  ];
+  
+  for (const pattern of timePatterns) {
+    const match = lowerTranscript.match(pattern);
+    if (match) {
+      let hours = parseInt(match[1]);
+      let minutes = match[2] ? parseInt(match[2]) : 0;
+      const period = match[3] || match[2];
+      
+      // Convert to 24-hour format
+      if (period === 'pm' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'am' && hours === 12) {
+        hours = 0;
+      }
+      
+      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      console.log(`Debug: Parsed time "${transcript}" as ${timeString}`);
+      return timeString;
     }
   }
   
@@ -162,16 +205,18 @@ Parse the user's voice command and return a JSON object with the following STRIC
   } catch (error) {
     console.error('OpenAI parsing error:', error);
     
-    // Enhanced fallback with weekday parsing
+    // Enhanced fallback with weekday and time parsing
     const weekdayDate = parseWeekdayInTranscript(transcript);
+    const timeMatch = parseTimeInTranscript(transcript);
     
     return {
       text: transcript,
       intent: 'schedule',
       confidence: 0.5,
       extractedData: {
-        title: transcript.replace(/\b(schedule|appointment|meeting|event)\b/gi, '').trim(),
+        title: transcript.replace(/\b(schedule|appointment|meeting|event|for|at|am|pm)\b/gi, '').trim(),
         date: weekdayDate,
+        time: timeMatch,
         priority: 'medium'
       },
       error: 'AI parsing failed, using enhanced fallback'
