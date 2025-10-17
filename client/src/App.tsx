@@ -23,6 +23,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Dark mode initialization and persistence
   useEffect(() => {
@@ -372,8 +373,81 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background mobile-safe-area">
-      {/* Header */}
+    <div className="min-h-screen relative">
+      {/* Aura Background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Galaxy base with rich royal purple */}
+        <div 
+          className="absolute inset-0 bg-gradient-to-br from-[#1a0033] via-[#2d1b69] to-[#0f0a1a]"
+          style={{ 
+            animation: (isSpeaking || isProcessing) ? 'sparkGradient 2s ease-in-out infinite' : 'breathe 4s ease-in-out infinite' 
+          }}
+        />
+        
+        {/* Galaxy stars overlay */}
+        <div 
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `
+              radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+              radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+              radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+              radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
+              radial-gradient(2px 2px at 160px 30px, #fff, transparent)
+            `,
+            backgroundRepeat: 'repeat',
+            backgroundSize: '200px 100px'
+          }}
+        />
+        
+        {/* Galaxy nebula clouds */}
+        <div
+          className="absolute top-1/3 left-1/4 w-[60rem] h-[60rem] bg-gradient-radial from-purple-900/50 via-violet-800/40 to-transparent rounded-full blur-[200px]"
+          style={{ 
+            animation: (isSpeaking || isProcessing)
+              ? 'sparkUp 1.5s ease-in-out infinite' 
+              : 'auraMove 10s ease-in-out infinite alternate, breatheBlob 6s ease-in-out infinite' 
+          }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/4 w-[55rem] h-[55rem] bg-gradient-radial from-indigo-900/45 via-purple-700/35 to-transparent rounded-full blur-[200px]"
+          style={{ 
+            animation: (isSpeaking || isProcessing)
+              ? 'sparkUp 1.7s ease-in-out infinite' 
+              : 'auraMove 12s ease-in-out infinite alternate-reverse, breatheBlob 8s ease-in-out infinite' 
+          }}
+        />
+        {/* Cosmic dust clouds */}
+        <div
+          className="absolute top-1/2 right-1/3 w-[50rem] h-[50rem] bg-gradient-radial from-fuchsia-800/35 via-purple-600/25 to-transparent rounded-full blur-[180px]"
+          style={{ 
+            animation: (isSpeaking || isProcessing)
+              ? 'sparkUp 1.9s ease-in-out infinite' 
+              : 'auraMove 14s ease-in-out infinite alternate, breatheBlob 7s ease-in-out infinite' 
+          }}
+        />
+        <div
+          className="absolute bottom-1/3 left-1/2 w-[45rem] h-[45rem] bg-gradient-radial from-violet-700/30 via-purple-500/20 to-transparent rounded-full blur-[160px]"
+          style={{ 
+            animation: (isSpeaking || isProcessing)
+              ? 'sparkUp 1.6s ease-in-out infinite' 
+              : 'auraMove 16s ease-in-out infinite alternate-reverse, breatheBlob 9s ease-in-out infinite' 
+          }}
+        />
+        
+        {/* Distant galaxy spiral */}
+        <div
+          className="absolute top-1/4 right-1/6 w-[40rem] h-[40rem] bg-gradient-conic from-purple-600/20 via-violet-500/15 to-transparent rounded-full blur-[300px]"
+          style={{ 
+            animation: (isSpeaking || isProcessing)
+              ? 'sparkUp 2.2s ease-in-out infinite' 
+              : 'auraMove 18s ease-in-out infinite alternate, breatheBlob 10s ease-in-out infinite' 
+          }}
+        />
+      </div>
+      
+      {/* Main Content */}
+      <div className="relative z-10 bg-background/80 backdrop-blur-xl mobile-safe-area min-h-screen">
       <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -387,15 +461,7 @@ function App() {
             </div>
             
             <div className="flex items-center space-x-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleDarkMode}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors mobile-tap"
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </motion.button>
+
               
               <motion.button
                 onClick={() => setShowHint(true)}
@@ -406,15 +472,7 @@ function App() {
               >
                 <HelpCircle className="w-5 h-5" />
               </motion.button>
-              
-              <motion.button
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors mobile-tap"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </motion.button>
+
             </div>
           </div>
         </div>
@@ -438,7 +496,16 @@ function App() {
                 onCommand={handleVoiceCommand}
                 onTranscription={(transcript) => {
                   setCurrentTranscript(transcript);
-                  if (transcript) setShowTranscript(true);
+                  if (transcript) {
+                    setShowTranscript(true);
+                    setIsSpeaking(true);
+                  }
+                }}
+                onProcessingChange={(processing) => {
+                  setIsProcessing(processing);
+                  if (!processing) {
+                    setIsSpeaking(false);
+                  }
                 }}
               />
 
@@ -534,14 +601,89 @@ function App() {
             </motion.div>
           </div>
         </div>
+        
       </main>
+      </div>
 
       {/* Command Hint Modal */}
       <CommandHint
         isVisible={showHint}
         onClose={() => setShowHint(false)}
       />
+      
+      {/* Animation keyframes */}
+      <style>{`
+        .bg-gradient-radial {
+          background: radial-gradient(circle, var(--tw-gradient-stops));
+        }
+        
+        .bg-gradient-conic {
+          background: conic-gradient(from 0deg, var(--tw-gradient-stops));
+        }
+        
+        @keyframes auraMove {
+          0% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(50px, -50px) scale(1.1); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        
+        @keyframes breathe {
+          0%, 100% { 
+            opacity: 0.2;
+            transform: scale(1);
+          }
+          50% { 
+            opacity: 0.4;
+            transform: scale(1.02);
+          }
+        }
+        
+        @keyframes breatheBlob {
+          0%, 100% { 
+            opacity: 0.1;
+            transform: scale(1);
+          }
+          50% { 
+            opacity: 0.3;
+            transform: scale(1.05);
+          }
+        }
+        
+        @keyframes sparkUp {
+          0% { 
+            opacity: 0.3;
+            transform: scale(1);
+            filter: blur(200px);
+          }
+          50% { 
+            opacity: 0.7;
+            transform: scale(1.6);
+            filter: blur(100px);
+          }
+          100% { 
+            opacity: 0.5;
+            transform: scale(1.3);
+            filter: blur(150px);
+          }
+        }
+        
+        @keyframes sparkGradient {
+          0% { 
+            opacity: 0.4;
+            transform: scale(1);
+          }
+          50% { 
+            opacity: 0.8;
+            transform: scale(1.03);
+          }
+          100% { 
+            opacity: 0.6;
+            transform: scale(1.01);
+          }
+        }
+      `}</style>
     </div>
+    
   );
 }
 

@@ -11,9 +11,10 @@ import { transcribeFallback } from '../utils/transcribeFallback';
 interface VoiceRecorderProps {
   onCommand: (command: VoiceCommand | VoiceCommand[]) => void;
   onTranscription: (text: string) => void;
+  onProcessingChange?: (isProcessing: boolean) => void;
 }
 
-export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTranscription }) => {
+export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTranscription, onProcessingChange }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,6 +49,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
       // Debounce finalization slightly to allow short pauses
       if (result.isFinal) {
         setIsProcessing(true);
+        onProcessingChange?.(true);
         
         try {
           // Use AI parsing if available and enabled, otherwise use regex-based parsing
@@ -70,6 +72,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
         // Reset after processing with a slightly longer delay to avoid cutoffs
         setTimeout(() => {
           setIsProcessing(false);
+          onProcessingChange?.(false);
           setTranscript('');
           reset();
         }, 1500);
@@ -115,6 +118,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
       };
       mediaRecorder.onstop = async () => {
         setIsProcessing(true);
+        onProcessingChange?.(true);
         const blob = new Blob(chunks, { type: 'audio/webm' });
         try {
           const text = await transcribeFallback(blob);
@@ -126,6 +130,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
           console.error('Transcription fallback error', e);
         } finally {
           setIsProcessing(false);
+          onProcessingChange?.(false);
           setTranscript('');
         }
       };
@@ -162,12 +167,17 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
           relative w-20 h-20 rounded-full flex items-center justify-center
           transition-all duration-300 transform
           ${isRecording 
-            ? 'bg-red-500 hover:bg-red-600 scale-110' 
-            : 'bg-blue-500 hover:bg-blue-600 hover:scale-105'
+            ? 'bg-red-500 hover:bg-red-600 scale-110 shadow-red-500/50 shadow-2xl' 
+            : 'bg-blue-500 hover:bg-blue-600 hover:scale-105 shadow-blue-500/30 shadow-xl'
           }
           ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
           shadow-lg hover:shadow-xl
         `}
+        style={{
+          boxShadow: isRecording 
+            ? '0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2)' 
+            : '0 0 15px rgba(59, 130, 246, 0.3), 0 0 30px rgba(59, 130, 246, 0.15)'
+        }}
         whileHover={{ scale: isProcessing ? 1 : 1.05 }}
         whileTap={{ scale: isProcessing ? 1 : 0.95 }}
         animate={isRecording ? { scale: [1, 1.1, 1] } : {}}
