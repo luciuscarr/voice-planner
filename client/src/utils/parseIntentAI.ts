@@ -13,6 +13,7 @@ export async function parseIntentAI(transcript: string): Promise<VoiceCommand | 
     const offsetMinutes = -new Date().getTimezoneOffset();
     console.log('🚀 Calling AI parser at:', `${API_URL}/api/ai/parse`);
     console.log('📝 Transcript:', transcript);
+    console.log('🌍 Timezone:', timeZone, 'Offset:', offsetMinutes);
     
     const response = await fetch(`${API_URL}/api/ai/parse`, {
       method: 'POST',
@@ -35,6 +36,7 @@ export async function parseIntentAI(transcript: string): Promise<VoiceCommand | 
     }
 
     const result = await response.json();
+    console.log('🤖 AI Response:', result);
     
     // Normalize AI output to ensure date/time fields exist and avoid server dueDate timezone skew
     const normalize = (cmd: VoiceCommand): VoiceCommand => {
@@ -81,7 +83,9 @@ export async function parseIntentAI(transcript: string): Promise<VoiceCommand | 
     
     // Fallback to basic parsing
     console.warn('Falling back to basic parsing');
-    return fallbackParse(transcript);
+    const fallbackResult = fallbackParse(transcript);
+    console.log('🔄 Fallback result:', fallbackResult);
+    return fallbackResult;
   }
 }
 

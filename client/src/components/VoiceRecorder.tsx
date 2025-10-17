@@ -55,27 +55,26 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
           // Use AI parsing if available and enabled, otherwise use regex-based parsing
           console.log('🎤 Parsing transcript:', result.transcript);
           console.log('🤖 AI Available (state):', aiAvailable, 'AI Available (ref):', aiAvailableRef.current, 'Use AI:', useAI);
+          console.log('🔍 Will use AI parsing:', useAI && aiAvailableRef.current);
           
           const command = (useAI && aiAvailableRef.current) 
             ? await parseIntentAI(result.transcript)
-            : parseIntent(result.transcript);
+            : await parseIntentAI(result.transcript); // Use AI parsing even as fallback
           
           console.log('📊 Parsed command:', command);
           onCommand(command);
         } catch (error) {
           console.error('❌ Error parsing command:', error);
           // Fallback to basic parsing on error
-          const command = parseIntent(result.transcript);
+          const command = await parseIntentAI(result.transcript);
           onCommand(command);
         }
         
-        // Reset after processing with a slightly longer delay to avoid cutoffs
-        setTimeout(() => {
-          setIsProcessing(false);
-          onProcessingChange?.(false);
-          setTranscript('');
-          reset();
-        }, 1500);
+        // Reset immediately after processing - no delay
+        setIsProcessing(false);
+        onProcessingChange?.(false);
+        setTranscript('');
+        reset();
       }
     },
     onError: (error) => {

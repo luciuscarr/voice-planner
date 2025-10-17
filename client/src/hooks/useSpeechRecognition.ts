@@ -109,7 +109,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
           clearTimeout(debounceTimeoutRef.current);
         }
 
-        // Set a new debounce timeout for final results
+        // Set a 4-second debounce timeout for final results
         if (finalTranscript.length > 0) {
           debounceTimeoutRef.current = setTimeout(() => {
             onResult?.({
@@ -117,7 +117,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
               confidence: maxConfidence,
               isFinal: true
             });
-          }, 4000); // 4 second debounce to allow for natural pauses
+          }, 4000); // 4 second break to allow for natural pauses
         } else {
           // For interim results, call immediately
           onResult?.({
