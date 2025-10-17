@@ -217,12 +217,31 @@ Parse the user's voice command and return a JSON object with the following STRIC
       timeMatch: timeMatch
     });
     
+    // Clean up the title by removing command words and time references
+    let cleanTitle = transcript
+      .replace(/\b(schedule|appointment|meeting|event|for|at)\b/gi, '')
+      .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
+      .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
+      .trim();
+    
+    // If title is empty or just whitespace, use a default
+    if (!cleanTitle || cleanTitle.length < 2) {
+      cleanTitle = 'Appointment';
+    }
+    
+    console.log('Fallback parser result:', {
+      transcript: transcript,
+      cleanTitle: cleanTitle,
+      weekdayDate: weekdayDate,
+      timeMatch: timeMatch
+    });
+    
     return {
       text: transcript,
       intent: 'schedule',
       confidence: 0.5,
       extractedData: {
-        title: transcript.replace(/\b(schedule|appointment|meeting|event|for|at|am|pm)\b/gi, '').trim(),
+        title: cleanTitle,
         date: weekdayDate,
         time: timeMatch,
         priority: 'medium'

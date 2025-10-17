@@ -69,6 +69,19 @@ function App() {
     setIsProcessing(true);
     
     const commands = Array.isArray(command) ? command : [command];
+    
+    // Debug logging for command parsing
+    console.log('Voice command received:', {
+      isArray: Array.isArray(command),
+      commandCount: commands.length,
+      commands: commands.map(cmd => ({
+        intent: cmd.intent,
+        title: cmd.extractedData?.title,
+        date: cmd.extractedData?.date,
+        time: cmd.extractedData?.time
+      }))
+    });
+    
     const findTimeCommands = commands.filter(cmd => cmd.intent === 'findTime');
     const actionable = commands.filter(cmd => cmd.intent !== 'findTime');
 
