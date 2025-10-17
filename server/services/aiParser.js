@@ -45,6 +45,36 @@ function extractReminderOffsets(text) {
 }
 
 /**
+ * Parse weekday names in transcript and return YYYY-MM-DD date
+ * @param {string} transcript - The voice transcript
+ * @returns {string|null} Date in YYYY-MM-DD format or null
+ */
+function parseWeekdayInTranscript(transcript) {
+  const weekdays = {
+    'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3, 
+    'thursday': 4, 'friday': 5, 'saturday': 6
+  };
+  
+  const lowerTranscript = transcript.toLowerCase();
+  
+  for (const [dayName, dayIndex] of Object.entries(weekdays)) {
+    if (lowerTranscript.includes(dayName)) {
+      const today = new Date();
+      const currentDay = today.getDay();
+      const daysUntilTarget = (dayIndex - currentDay + 7) % 7;
+      
+      // If it's the same day, use today; otherwise use the next occurrence
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + (daysUntilTarget === 0 ? 0 : daysUntilTarget));
+      
+      return targetDate.toISOString().split('T')[0]; // Return YYYY-MM-DD
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Parse voice command using OpenAI's GPT model
  * @param {string} transcript - The voice transcript to parse
  * @returns {Promise<Object>} Parsed command with intent and extracted data
@@ -64,6 +94,14 @@ async function parseVoiceCommand(transcript) {
 
 Current date/time (UTC ISO): ${currentDateTime}
 Current day (user-local may differ): ${currentDay}
+
+IMPORTANT: When the user mentions a weekday name (like "Saturday", "Sunday", "Monday", etc.), you MUST:
+1. Calculate the specific date for that weekday
+2. If it's the current day, use today's date
+3. If it's a future weekday in the current week, use that date
+4. If it's a past weekday in the current week, use the same weekday NEXT week
+5. Always provide the date in YYYY-MM-DD format in the "date" field
+6. If a specific time is mentioned, include it in the "time" field as HH:mm (24-hour format)
 
 If the user message contains hints like [UserTimeZone:America/Los_Angeles] or [UserOffsetMinutes:-420], interpret weekday names (e.g., "Thursday") against that user timezone.
 
@@ -97,6 +135,15 @@ Parse the user's voice command and return a JSON object with the following STRIC
 
     const parsedResponse = JSON.parse(completion.choices[0].message.content);
     
+    // If AI didn't parse a date but we can detect a weekday, add it
+    if (!parsedResponse.extractedData?.date && !parsedResponse.extractedData?.dueDate) {
+      const weekdayDate = parseWeekdayInTranscript(transcript);
+      if (weekdayDate) {
+        parsedResponse.extractedData = parsedResponse.extractedData || {};
+        parsedResponse.extractedData.date = weekdayDate;
+      }
+    }
+    
     // If multiple tasks detected, we'll handle splitting on the client side
     return {
       text: transcript,
@@ -106,16 +153,19 @@ Parse the user's voice command and return a JSON object with the following STRIC
   } catch (error) {
     console.error('OpenAI parsing error:', error);
     
-    // Fallback to basic parsing if AI fails
+    // Enhanced fallback with weekday parsing
+    const weekdayDate = parseWeekdayInTranscript(transcript);
+    
     return {
       text: transcript,
-      intent: 'unknown',
-      confidence: 0.3,
+      intent: 'schedule',
+      confidence: 0.5,
       extractedData: {
-        title: transcript,
+        title: transcript.replace(/\b(schedule|appointment|meeting|event)\b/gi, '').trim(),
+        date: weekdayDate,
         priority: 'medium'
       },
-      error: 'AI parsing failed, using fallback'
+      error: 'AI parsing failed, using enhanced fallback'
     };
   }
 }
