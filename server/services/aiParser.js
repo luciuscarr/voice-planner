@@ -61,11 +61,20 @@ function parseWeekdayInTranscript(transcript) {
     if (lowerTranscript.includes(dayName)) {
       const today = new Date();
       const currentDay = today.getDay();
-      const daysUntilTarget = (dayIndex - currentDay + 7) % 7;
       
-      // If it's the same day, use today; otherwise use the next occurrence
+      // Calculate days until target day
+      let daysUntilTarget = dayIndex - currentDay;
+      
+      // If it's the same day, use today; if it's in the past this week, use next week
+      if (daysUntilTarget < 0) {
+        daysUntilTarget += 7; // Next week
+      } else if (daysUntilTarget === 0) {
+        // Same day - use today
+        daysUntilTarget = 0;
+      }
+      
       const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + (daysUntilTarget === 0 ? 0 : daysUntilTarget));
+      targetDate.setDate(today.getDate() + daysUntilTarget);
       
       return targetDate.toISOString().split('T')[0]; // Return YYYY-MM-DD
     }
