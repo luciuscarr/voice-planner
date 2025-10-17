@@ -200,7 +200,23 @@ function App() {
                 });
               }
               
-              return local.toISOString();
+              // CRITICAL FIX: Create a date that represents the local time as if it were UTC
+              // This prevents timezone conversion from shifting the date
+              const localAsUTC = new Date(Date.UTC(year, monthIndex, day, hours, minutes, 0, 0));
+              
+              // Debug the conversion
+              if (local.getDay() === 6) {
+                console.log('Local as UTC debug:', {
+                  inputDate: date,
+                  inputTime: time,
+                  localDate: local.toISOString(),
+                  localAsUTC: localAsUTC.toISOString(),
+                  localDay: local.getDay(),
+                  utcDay: localAsUTC.getDay()
+                });
+              }
+              
+              return localAsUTC.toISOString();
             }
             
             // Fallback to server-provided dueDate if no structured fields
