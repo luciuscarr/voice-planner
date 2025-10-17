@@ -34,6 +34,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
   
   const recognitionRef = useRef<any>(null);
   const keepAliveRef = useRef<boolean>(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSupported = typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
 
   const startListening = useCallback(() => {
@@ -103,11 +104,28 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
         setTranscript(fullTranscript);
         setConfidence(maxConfidence);
 
-        onResult?.({
-          transcript: fullTranscript,
-          confidence: maxConfidence,
-          isFinal: finalTranscript.length > 0
-        });
+        // Clear any existing debounce timeout
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current);
+        }
+
+        // Set a new debounce timeout for final results
+        if (finalTranscript.length > 0) {
+          debounceTimeoutRef.current = setTimeout(() => {
+            onResult?.({
+              transcript: fullTranscript,
+              confidence: maxConfidence,
+              isFinal: true
+            });
+          }, 2000); // 2 second debounce
+        } else {
+          // For interim results, call immediately
+          onResult?.({
+            transcript: fullTranscript,
+            confidence: maxConfidence,
+            isFinal: false
+          });
+        }
       };
 
       recognition.onerror = (event: any) => {

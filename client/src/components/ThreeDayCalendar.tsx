@@ -51,6 +51,22 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
         const tb = b.dueDate ? new Date(b.dueDate).getTime() : 0;
         return ta - tb;
       });
+    
+    // Debug logging for third day
+    if (day.getDate() === new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).getDate()) {
+      console.log('Third day debug:', {
+        day: day.toISOString(),
+        allTasks: tasks.length,
+        tasksWithDueDate: tasks.filter(t => t.dueDate).length,
+        itemsForThisDay: items.length,
+        tasksForThisDay: tasks.filter(t => {
+          if (!t.dueDate) return false;
+          const taskDate = new Date(t.dueDate);
+          return taskDate >= getStartOfDay(day) && taskDate <= getEndOfDay(day);
+        })
+      });
+    }
+    
     return { day, items };
   });
 
@@ -96,10 +112,10 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
         if (!token) throw new Error('Missing access token after authentication');
       }
 
-      // Range: today through the next 7 days (load extra for safety)
+      // Range: today through the next 3 days
       const start = getStartOfDay(new Date());
       const end = getEndOfDay(new Date(start));
-      end.setDate(end.getDate() + 7);
+      end.setDate(end.getDate() + 3);
 
       const imported = await importCalendarAsTasks(token, start, end);
       if (imported.length > 0) {
