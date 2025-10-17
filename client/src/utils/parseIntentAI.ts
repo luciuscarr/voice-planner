@@ -115,10 +115,27 @@ function fallbackParse(transcript: string): VoiceCommand {
     intent = 'task';
   } else if (lowerTranscript.includes('remind') || lowerTranscript.includes('reminder')) {
     intent = 'reminder';
-  } else if (lowerTranscript.includes('schedule') || lowerTranscript.includes('meeting')) {
+  } else if (lowerTranscript.includes('schedule') || lowerTranscript.includes('meeting') || lowerTranscript.includes('appointment')) {
     intent = 'schedule';
   } else if (lowerTranscript.includes('note') || lowerTranscript.includes('write down')) {
     intent = 'note';
+  }
+  
+  // Basic weekday detection for fallback
+  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  let detectedDate: string | undefined = undefined;
+  for (const day of weekdays) {
+    if (lowerTranscript.includes(day)) {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const targetDay = weekdays.indexOf(day);
+      let daysUntilTarget = targetDay - currentDay;
+      if (daysUntilTarget < 0) daysUntilTarget += 7;
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() + daysUntilTarget);
+      detectedDate = targetDate.toISOString().split('T')[0];
+      break;
+    }
   }
   
   return {
@@ -127,6 +144,7 @@ function fallbackParse(transcript: string): VoiceCommand {
     confidence: 0.5,
     extractedData: {
       title: transcript,
+      date: detectedDate,
       priority: 'medium'
     }
   };

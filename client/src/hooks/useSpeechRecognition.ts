@@ -117,7 +117,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
               confidence: maxConfidence,
               isFinal: true
             });
-          }, 2000); // 2 second debounce
+          }, 4000); // 4 second debounce to allow for natural pauses
         } else {
           // For interim results, call immediately
           onResult?.({
@@ -137,12 +137,15 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       recognition.onend = () => {
         // Auto-restart to tolerate short pauses when continuous is enabled
         if (keepAliveRef.current && continuous && recognitionRef.current) {
-          try {
-            recognitionRef.current.start();
-            setIsListening(true);
-          } catch (e) {
-            setIsListening(false);
-          }
+          // Add a small delay before restarting to handle natural pauses
+          setTimeout(() => {
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (e) {
+              setIsListening(false);
+            }
+          }, 100);
         } else {
           setIsListening(false);
         }

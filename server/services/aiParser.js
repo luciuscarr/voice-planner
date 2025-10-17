@@ -243,6 +243,12 @@ IMPORTANT: When the user mentions a weekday name (like "Saturday", "Sunday", "Mo
 5. Always provide the date in YYYY-MM-DD format in the "date" field
 6. If a specific time is mentioned, include it in the "time" field as HH:mm (24-hour format)
 
+COMMON PATTERNS TO RECOGNIZE:
+- "schedule for saturday" = schedule intent with saturday date
+- "schedule an appointment saturday" = schedule intent with saturday date  
+- "schedule for october 18th" = schedule intent with specific date
+- "schedule for october 18th at 8pm" = schedule intent with specific date and time
+
 If the user message contains hints like [UserTimeZone:America/Los_Angeles] or [UserOffsetMinutes:-420], interpret weekday names (e.g., "Thursday") against that user timezone.
 
 Parse the user's voice command and return a JSON object with the following STRICT structure and formatting (return JSON only):
