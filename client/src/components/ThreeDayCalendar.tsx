@@ -34,9 +34,9 @@ function withinDay(due?: string, day?: Date): boolean {
   const endOfDay = getEndOfDay(day);
   const isWithin = dt >= startOfDay && dt <= endOfDay;
   
-  // Debug logging for Saturday tasks
-  if (day && day.getDay() === 6) { // Saturday
-    console.log('Saturday debug:', {
+  // Debug logging for Saturday tasks (only for new tasks)
+  if (day && day.getDay() === 6 && isWithin) { // Saturday and within range
+    console.log('Saturday task found:', {
       taskDate: dt.toISOString(),
       dayStart: startOfDay.toISOString(),
       dayEnd: endOfDay.toISOString(),
@@ -68,20 +68,15 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
         return ta - tb;
       });
     
-    // Debug logging for third day
-    if (day.getDate() === new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).getDate()) {
-      console.log('Third day debug:', {
+    // Debug logging for third day (only if no items found)
+    if (day.getDate() === new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).getDate() && items.length === 0) {
+      console.log('Third day empty - checking recent tasks:', {
         day: day.toISOString(),
-        dayStart: getStartOfDay(day).toISOString(),
-        dayEnd: getEndOfDay(day).toISOString(),
         allTasks: tasks.length,
-        tasksWithDueDate: tasks.filter(t => t.dueDate).length,
         itemsForThisDay: items.length,
-        recentTasks: tasks.slice(0, 3).map(t => ({
-          id: t.id,
+        recentTasks: tasks.slice(0, 2).map(t => ({
           title: t.title,
           dueDate: t.dueDate,
-          taskDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
           isWithinDay: t.dueDate ? withinDay(t.dueDate, day) : false
         }))
       });

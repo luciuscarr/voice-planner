@@ -211,6 +211,12 @@ Parse the user's voice command and return a JSON object with the following STRIC
     const weekdayDate = parseWeekdayInTranscript(transcript);
     const timeMatch = parseTimeInTranscript(transcript);
     
+    console.log('Fallback parser debug:', {
+      transcript: transcript,
+      weekdayDate: weekdayDate,
+      timeMatch: timeMatch
+    });
+    
     return {
       text: transcript,
       intent: 'schedule',
