@@ -96,10 +96,10 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
         if (!token) throw new Error('Missing access token after authentication');
       }
 
-      // Range: today through the next 3 days
+      // Range: today through the next 7 days (load extra for safety)
       const start = getStartOfDay(new Date());
       const end = getEndOfDay(new Date(start));
-      end.setDate(end.getDate() + 4);
+      end.setDate(end.getDate() + 7);
 
       const imported = await importCalendarAsTasks(token, start, end);
       if (imported.length > 0) {

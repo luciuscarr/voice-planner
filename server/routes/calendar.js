@@ -200,7 +200,7 @@ router.get('/events', async (req, res) => {
     const startOfToday = new Date(year, month - 1, day, 0, 0, 0, 0);
     
     const endOfRange = new Date(startOfToday);
-    endOfRange.setDate(endOfRange.getDate() + 4);
+    endOfRange.setDate(endOfRange.getDate() + 7);
     endOfRange.setHours(23, 59, 59, 999);
 
     console.log('Calendar import debug:', {
