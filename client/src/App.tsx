@@ -380,7 +380,7 @@ function App() {
         <div 
           className="absolute inset-0 bg-gradient-to-br from-[#1a0033] via-[#2d1b69] to-[#0f0a1a]"
           style={{ 
-            animation: (isSpeaking || isProcessing) ? 'sparkGradient 2s ease-in-out infinite' : 'breathe 4s ease-in-out infinite' 
+            animation: (isSpeaking || isProcessing) ? 'sparkGradient 2s ease-in-out infinite' : 'none' 
           }}
         />
         
@@ -400,50 +400,12 @@ function App() {
           }}
         />
         
-        {/* Galaxy nebula clouds */}
-        <div
-          className="absolute top-1/3 left-1/4 w-[60rem] h-[60rem] bg-gradient-radial from-purple-900/50 via-violet-800/40 to-transparent rounded-full blur-[200px]"
-          style={{ 
-            animation: (isSpeaking || isProcessing)
-              ? 'sparkUp 1.5s ease-in-out infinite' 
-              : 'auraMove 10s ease-in-out infinite alternate, breatheBlob 6s ease-in-out infinite' 
-          }}
-        />
-        <div
-          className="absolute bottom-1/4 right-1/4 w-[55rem] h-[55rem] bg-gradient-radial from-indigo-900/45 via-purple-700/35 to-transparent rounded-full blur-[200px]"
-          style={{ 
-            animation: (isSpeaking || isProcessing)
-              ? 'sparkUp 1.7s ease-in-out infinite' 
-              : 'auraMove 12s ease-in-out infinite alternate-reverse, breatheBlob 8s ease-in-out infinite' 
-          }}
-        />
-        {/* Cosmic dust clouds */}
-        <div
-          className="absolute top-1/2 right-1/3 w-[50rem] h-[50rem] bg-gradient-radial from-fuchsia-800/35 via-purple-600/25 to-transparent rounded-full blur-[180px]"
-          style={{ 
-            animation: (isSpeaking || isProcessing)
-              ? 'sparkUp 1.9s ease-in-out infinite' 
-              : 'auraMove 14s ease-in-out infinite alternate, breatheBlob 7s ease-in-out infinite' 
-          }}
-        />
-        <div
-          className="absolute bottom-1/3 left-1/2 w-[45rem] h-[45rem] bg-gradient-radial from-violet-700/30 via-purple-500/20 to-transparent rounded-full blur-[160px]"
-          style={{ 
-            animation: (isSpeaking || isProcessing)
-              ? 'sparkUp 1.6s ease-in-out infinite' 
-              : 'auraMove 16s ease-in-out infinite alternate-reverse, breatheBlob 9s ease-in-out infinite' 
-          }}
-        />
-        
-        {/* Distant galaxy spiral */}
-        <div
-          className="absolute top-1/4 right-1/6 w-[40rem] h-[40rem] bg-gradient-conic from-purple-600/20 via-violet-500/15 to-transparent rounded-full blur-[300px]"
-          style={{ 
-            animation: (isSpeaking || isProcessing)
-              ? 'sparkUp 2.2s ease-in-out infinite' 
-              : 'auraMove 18s ease-in-out infinite alternate, breatheBlob 10s ease-in-out infinite' 
-          }}
-        />
+        {/* Galaxy nebula clouds - optimized with pseudo-elements */}
+        <div className="absolute top-1/3 left-1/4 w-[60rem] h-[60rem] aura-purple" />
+        <div className="absolute bottom-1/4 right-1/4 w-[55rem] h-[55rem] aura-indigo" />
+        <div className="absolute top-1/2 right-1/3 w-[50rem] h-[50rem] aura-fuchsia" />
+        <div className="absolute bottom-1/3 left-1/2 w-[45rem] h-[45rem] aura-violet" />
+        <div className="absolute top-1/4 right-1/6 w-[40rem] h-[40rem] aura-spiral" />
       </div>
       
       {/* Main Content */}
@@ -621,6 +583,57 @@ function App() {
           background: conic-gradient(from 0deg, var(--tw-gradient-stops));
         }
         
+        /* Optimized aura effects with pseudo-elements */
+        .aura-purple::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 50% 50%, #6b21a8 0%, #7c3aed 30%, transparent 70%);
+          filter: blur(200px);
+          opacity: 0.6;
+          animation: ${(isSpeaking || isProcessing) ? 'sparkUp 1.5s ease-in-out infinite' : 'breathe 6s ease-in-out infinite'};
+        }
+        
+        .aura-indigo::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 50% 50%, #4338ca 0%, #6366f1 30%, transparent 70%);
+          filter: blur(200px);
+          opacity: 0.5;
+          animation: ${(isSpeaking || isProcessing) ? 'sparkUp 1.7s ease-in-out infinite' : 'breathe 7s ease-in-out infinite'};
+        }
+        
+        .aura-fuchsia::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 50% 50%, #be185d 0%, #d946ef 30%, transparent 70%);
+          filter: blur(180px);
+          opacity: 0.4;
+          animation: ${(isSpeaking || isProcessing) ? 'sparkUp 1.9s ease-in-out infinite' : 'breathe 8s ease-in-out infinite'};
+        }
+        
+        .aura-violet::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 50% 50%, #7c2d12 0%, #a855f7 30%, transparent 70%);
+          filter: blur(160px);
+          opacity: 0.3;
+          animation: ${(isSpeaking || isProcessing) ? 'sparkUp 1.6s ease-in-out infinite' : 'breathe 9s ease-in-out infinite'};
+        }
+        
+        .aura-spiral::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: conic-gradient(from 0deg, #7c3aed 0%, #a855f7 30%, transparent 70%);
+          filter: blur(300px);
+          opacity: 0.25;
+          animation: ${(isSpeaking || isProcessing) ? 'sparkUp 2.2s ease-in-out infinite' : 'breathe 10s ease-in-out infinite'};
+        }
+        
         @keyframes auraMove {
           0% { transform: translate(0, 0) scale(1); }
           50% { transform: translate(50px, -50px) scale(1.1); }
@@ -629,12 +642,10 @@ function App() {
         
         @keyframes breathe {
           0%, 100% { 
-            opacity: 0.2;
-            transform: scale(1);
+            opacity: 0.3;
           }
           50% { 
-            opacity: 0.4;
-            transform: scale(1.02);
+            opacity: 0.7;
           }
         }
         
