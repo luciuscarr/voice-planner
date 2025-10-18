@@ -6,7 +6,7 @@ import { VoiceCommand } from '@shared/types';
 import { transcribeFallback } from '../utils/transcribeFallback';
 
 // Server-side AI parsing functions
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
 
 async function parseWithServerAI(transcript: string, multipleCommands = true): Promise<VoiceCommand | VoiceCommand[]> {
   try {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Task, WebSocketMessage } from '@voice-planner/shared';
 import { useWebSocket } from './useWebSocket';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);

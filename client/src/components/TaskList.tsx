@@ -94,7 +94,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   const importCalendar = async () => {
     try {
       let token = localStorage.getItem('google_access_token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
 
       // If not connected, prompt connection and then continue
       if (!token) {

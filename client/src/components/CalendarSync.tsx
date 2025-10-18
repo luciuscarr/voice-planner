@@ -38,7 +38,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       setErrorMessage('');
       
       // Get authorization URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
       console.log('🔗 Connecting to API:', apiUrl);
       
       const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
@@ -113,7 +113,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
         return;
       }
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
       const response = await fetch(`${apiUrl}/api/calendar/sync-task`, {
         method: 'POST',
         headers: {
@@ -155,7 +155,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       const token = localStorage.getItem('google_access_token');
       if (!token) return;
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
       
       if (task.calendarEventId) {
         await fetch(`${apiUrl}/api/calendar/events/${task.calendarEventId}?accessToken=${token}`, {

@@ -91,7 +91,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
   const importCalendar = useCallback(async () => {
     try {
       let token = localStorage.getItem('google_access_token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
 
       if (!token) {
         const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
@@ -155,7 +155,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
   const exportAll = useCallback(async () => {
     try {
       let token = localStorage.getItem('google_access_token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
       if (!token) {
         const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
         if (!response.ok) {
@@ -245,7 +245,7 @@ export const ThreeDayCalendar: React.FC<ThreeDayCalendarProps> = ({ tasks, onSyn
       // If synced/imported (has calendarEventId), attempt to delete from Google first
       if (t.calendarEventId) {
         const token = localStorage.getItem('google_access_token');
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
         if (token) {
           await fetch(`${apiUrl}/api/calendar/events/${t.calendarEventId}?accessToken=${token}`, { method: 'DELETE' });
         }

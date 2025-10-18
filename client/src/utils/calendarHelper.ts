@@ -20,7 +20,7 @@ export async function fetchCalendarEvents(
   endDate: Date
 ): Promise<CalendarEvent[]> {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const response = await fetch(
       `${apiUrl}/api/calendar/events?accessToken=${accessToken}&timeMin=${startDate.toISOString()}&timeMax=${endDate.toISOString()}&timeZone=${encodeURIComponent(tz)}`
@@ -41,7 +41,7 @@ export async function fetchCalendarEvents(
 // Import Google events as local tasks
 export async function importCalendarAsTasks(accessToken: string, startDate: Date, endDate: Date) {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const response = await fetch(
       `${apiUrl}/api/calendar/events?accessToken=${accessToken}&timeMin=${startDate.toISOString()}&timeMax=${endDate.toISOString()}&timeZone=${encodeURIComponent(timeZone)}`

@@ -1,5 +1,5 @@
 export async function transcribeFallback(blob: Blob): Promise<string> {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
   const form = new FormData();
   const file = new File([blob], 'audio.webm', { type: blob.type || 'audio/webm' });
   form.append('audio', file);

@@ -53,13 +53,13 @@ function App() {
 
   // Debug: Log API URL on mount
   useState(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
     console.log('🔧 API URL:', apiUrl);
     console.log('🔧 VITE_API_URL:', import.meta.env.VITE_API_URL);
     console.log('🔧 All env vars:', import.meta.env);
     
     if (!import.meta.env.VITE_API_URL) {
-      console.error('⚠️ VITE_API_URL is not set! Using localhost fallback.');
+      console.error('⚠️ VITE_API_URL is not set! Using production server fallback.');
     }
   });
 
