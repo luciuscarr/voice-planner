@@ -49,11 +49,19 @@ A voice-driven productivity app that lets you record short voice commands, trans
    ```bash
    cp env.example .env
    ```
-   Edit `.env` and add your OpenAI API key for AI-powered parsing:
+   Edit `.env` and add your API keys:
    ```env
+   # Required for AI-powered voice parsing
    OPENAI_API_KEY=sk-your-api-key-here
+   
+   # Optional: Google Calendar integration
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   GOOGLE_REDIRECT_URI=https://your-domain.com/api/calendar/auth-callback
    ```
-   Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+   Get your OpenAI API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+   
+   **Note**: Google Calendar integration is optional. If not configured, the calendar sync feature will show an appropriate error message.
    
    See [AI_SETUP.md](./AI_SETUP.md) for detailed AI setup instructions.
 

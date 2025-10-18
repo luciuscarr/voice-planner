@@ -35,6 +35,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
   const connectGoogleCalendar = async () => {
     try {
       setIsLoading(true);
+      setErrorMessage('');
       
       // Get authorization URL
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -44,9 +45,16 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       console.log('📡 Response status:', response.status);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error:', errorText);
-        throw new Error(`Failed to get auth URL: ${response.status} - ${errorText}`);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ API Error:', errorData);
+        
+        if (errorData.error?.includes('credentials not configured')) {
+          setErrorMessage('Google Calendar integration is not configured on the server. Please contact the administrator.');
+        } else {
+          setErrorMessage(`Failed to connect to Google Calendar: ${errorData.error || 'Unknown error'}`);
+        }
+        setSyncStatus('error');
+        return;
       }
       
       const { authUrl } = await response.json();
@@ -180,7 +188,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="relative flex items-center space-x-2">
       {!isConnected ? (
         <motion.button
           onClick={connectGoogleCalendar}
@@ -258,6 +266,20 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
           >
             <Check className="w-4 h-4" />
             <span className="text-xs font-medium">Calendar</span>
+          </motion.div>
+        )}
+        
+        {syncStatus === 'error' && errorMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-full left-0 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg shadow-lg z-10 max-w-xs"
+          >
+            <div className="flex items-start space-x-2">
+              <X className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-700">{errorMessage}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
