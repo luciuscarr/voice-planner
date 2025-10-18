@@ -1,29 +1,6 @@
 {
-  "build": {
-    "env": {
-      "VITE_API_URL": "https://voice-planner.onrender.com/",
-      "VITE_WEBSOCKET_URL": "wss://voice-planner.onrender.com/"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://voice-planner-api.onrender.com/api/$1"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    }
-  ]
+  "buildCommand": "npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm run install:all",
+  "framework": "vite"
 }

@@ -1,5 +1,9 @@
 const OpenAI = require('openai');
 
+// largely reformatted the way the parsing works to the AI. Gives more hints.
+
+
+
 // Initialize OpenAI client only if API key is available
 let openai = null;
 if (process.env.OPENAI_API_KEY) {
@@ -183,6 +187,91 @@ function parseTimeInTranscript(transcript) {
 }
 
 /**
+ * Analyze keywords for each individual task in a multi-command transcript
+ * @param {string} transcript - The full voice transcript
+ * @returns {Array} Array of keyword analysis for each task part
+ */
+function analyzeKeywordsPerTask(transcript) {
+  // Split transcript into potential task parts
+  const separators = [', and ', ' and then ', ' also ', ' plus ', ' and ', ', ', ' & ', ' then '];
+  let parts = [transcript];
+  
+  for (const separator of separators) {
+    const newParts = [];
+    for (const part of parts) {
+      if (part.toLowerCase().includes(separator)) {
+        newParts.push(...part.split(new RegExp(separator, 'gi')));
+      } else {
+        newParts.push(part);
+      }
+    }
+    parts = newParts;
+  }
+  
+  // Clean up empty parts
+  parts = parts.filter(part => part.trim().length > 0);
+  
+  // Analyze each part
+  return parts.map((part, index) => {
+    const preprocessed = preprocessTranscript(part.trim());
+    return {
+      taskIndex: index,
+      text: part.trim(),
+      keywords: preprocessed.highlightedKeywords,
+      context: preprocessed.context,
+      detectedAction: preprocessed.context.detectedAction,
+      detectedTaskType: preprocessed.context.detectedTaskType
+    };
+  });
+}
+
+/**
+ * Light preprocessing to enhance transcript for AI
+ * @param {string} transcript - The raw voice transcript
+ * @returns {Object} Enhanced transcript with keywords and context
+ */
+function preprocessTranscript(transcript) {
+  const lowerTranscript = transcript.toLowerCase();
+  
+  // Extract keywords by category
+  const actionWords = ['remind', 'create', 'schedule', 'note', 'write', 'call', 'text', 'email', 'send', 'make', 'add', 'delete', 'complete'];
+  const priorityWords = ['urgent', 'important', 'high priority', 'low priority', 'asap', 'immediately', 'critical'];
+  const timeWords = ['today', 'tomorrow', 'yesterday', 'next week', 'next month', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const taskTypeWords = ['meeting', 'event', 'appointment', 'task', 'reminder', 'note'];
+  
+  // Find highlighted keywords
+  const highlightedKeywords = [];
+  const allWords = lowerTranscript.split(/\s+/);
+  
+  allWords.forEach(word => {
+    if (actionWords.includes(word) || 
+        priorityWords.includes(word) || 
+        timeWords.includes(word) || 
+        taskTypeWords.includes(word)) {
+      highlightedKeywords.push(word);
+    }
+  });
+  
+  // Detect potential intent hints
+  const hasTime = /(\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\bat\s+\d{1,2}(:\d{2})?\b)/i.test(transcript);
+  const hasDate = /(today|tomorrow|yesterday|next week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(transcript);
+  const hasPriority = /(urgent|important|high priority|low priority|asap|immediately|critical)/i.test(transcript);
+  
+  return {
+    originalText: transcript,
+    highlightedKeywords: highlightedKeywords,
+    context: {
+      hasTime,
+      hasDate,
+      hasPriority,
+      keywordCount: highlightedKeywords.length,
+      detectedAction: actionWords.find(word => lowerTranscript.includes(word)),
+      detectedTaskType: taskTypeWords.find(word => lowerTranscript.includes(word))
+    }
+  };
+}
+
+/**
  * Parse voice command using OpenAI's GPT model
  * @param {string} transcript - The voice transcript to parse
  * @returns {Promise<Object>} Parsed command with intent and extracted data
@@ -221,6 +310,19 @@ async function parseVoiceCommand(transcript) {
   }
   
   try {
+    // Preprocess transcript to extract keywords and context
+    const preprocessed = preprocessTranscript(transcript);
+    
+    // Also analyze keywords per individual task (for multi-command transcripts)
+    const perTaskAnalysis = analyzeKeywordsPerTask(transcript);
+    
+    console.log('AI Parser - Preprocessing results:', {
+      originalText: transcript,
+      highlightedKeywords: preprocessed.highlightedKeywords,
+      context: preprocessed.context,
+      perTaskAnalysis: perTaskAnalysis
+    });
+    
     const now = new Date();
     const currentDateTime = now.toISOString();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -235,6 +337,19 @@ async function parseVoiceCommand(transcript) {
 Current date/time (UTC ISO): ${currentDateTime}
 Current day (user-local may differ): ${currentDay}
 
+PREPROCESSING HINTS:
+- Highlighted Keywords: ${preprocessed.highlightedKeywords.join(', ') || 'none'}
+- Has Time Reference: ${preprocessed.context.hasTime ? 'YES' : 'NO'}
+- Has Date Reference: ${preprocessed.context.hasDate ? 'YES' : 'NO'}
+- Has Priority: ${preprocessed.context.hasPriority ? 'YES' : 'NO'}
+- Detected Action: ${preprocessed.context.detectedAction || 'none'}
+- Detected Task Type: ${preprocessed.context.detectedTaskType || 'none'}
+
+PER-TASK KEYWORD ANALYSIS:
+${perTaskAnalysis.length > 1 ? perTaskAnalysis.map((task, i) => 
+  `Task ${i + 1}: "${task.text}" - Keywords: [${task.keywords.join(', ') || 'none'}] - Action: ${task.detectedAction || 'none'} - Type: ${task.detectedTaskType || 'none'}`
+).join('\n') : 'Single task detected'}
+
 IMPORTANT: When the user mentions a weekday name (like "Saturday", "Sunday", "Monday", etc.), you MUST:
 1. Calculate the specific date for that weekday
 2. If it's the current day, use today's date
@@ -248,6 +363,8 @@ COMMON PATTERNS TO RECOGNIZE:
 - "schedule an appointment saturday" = schedule intent with saturday date  
 - "schedule for october 18th" = schedule intent with specific date
 - "schedule for october 18th at 8pm" = schedule intent with specific date and time
+
+Use the preprocessing hints above to better understand the user's intent. The highlighted keywords can help you identify the action and context more accurately.
 
 If the user message contains hints like [UserTimeZone:America/Los_Angeles] or [UserOffsetMinutes:-420], interpret weekday names (e.g., "Thursday") against that user timezone.
 
@@ -480,9 +597,18 @@ async function parseMultipleCommands(transcript) {
       return text.trim();
     });
 
-    // Parse each part independently via AI
+    // Parse each part independently via AI with individual preprocessing
     let parsedCommands = await Promise.all(
-      normalizedParts.map(part => parseVoiceCommand(part))
+      normalizedParts.map(async (part) => {
+        // Preprocess each individual part for better AI understanding
+        const preprocessed = preprocessTranscript(part);
+        console.log(`Multi-command parsing - Part: "${part}"`, {
+          highlightedKeywords: preprocessed.highlightedKeywords,
+          context: preprocessed.context
+        });
+        
+        return await parseVoiceCommand(part);
+      })
     );
 
     // Fallback: convert reminder-only phrases to applyToLastScheduled with reminders

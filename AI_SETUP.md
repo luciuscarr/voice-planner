@@ -132,7 +132,7 @@ Returns: { "available": true, "model": "gpt-4o-mini" }
 
 - `server/services/aiParser.js` - AI parsing service using OpenAI
 - `server/routes/ai.js` - API endpoints for AI parsing
-- `client/src/utils/parseIntentAI.ts` - Client-side AI parser wrapper
+- `server/services/aiParser.js` - Server-side AI parser with OpenAI integration
 - `client/src/components/VoiceRecorder.tsx` - Updated to use AI parsing
 - `server/package.json` - Added OpenAI dependency
 

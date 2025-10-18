@@ -2,11 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Square } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { parseIntentAI, checkAIStatus } from '../utils/parseIntentAI';
-import { parseIntent } from '../utils/parseIntent';
 import { VoiceCommand } from '@shared/types';
 import { transcribeFallback } from '../utils/transcribeFallback';
 
+// Server-side AI parsing functions
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+async function parseWithServerAI(transcript: string, multipleCommands = true): Promise<VoiceCommand | VoiceCommand[]> {
+  try {
+    const response = await fetch(`${API_URL}/api/ai/parse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transcript,
+        multipleCommands,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        offsetMinutes: new Date().getTimezoneOffset()
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server AI parsing failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error) {
+    console.error('Server AI parsing error:', error);
+    // Fallback to basic parsing if server AI fails
+    return {
+      text: transcript,
+      intent: 'unknown',
+      confidence: 0.3,
+      extractedData: { title: transcript, priority: 'medium' }
+    };
+  }
+}
+
+async function checkServerAIStatus(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}/api/ai/status`);
+    if (!response.ok) return false;
+    const result = await response.json();
+    return result.available;
+  } catch (error) {
+    console.error('Error checking server AI status:', error);
+    return false;
+  }
+}
 
 interface VoiceRecorderProps {
   onCommand: (command: VoiceCommand | VoiceCommand[]) => void;
@@ -22,20 +67,20 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
   const [aiAvailable, setAiAvailable] = useState(false);
   const aiAvailableRef = React.useRef(false);
 
-  // Check AI availability on mount
+  // Check server AI availability on mount
   useEffect(() => {
-    console.log('🔍 Checking AI availability...');
-    checkAIStatus().then(available => {
-      console.log('✅ AI Available:', available);
+    console.log('🔍 Checking server AI availability...');
+    checkServerAIStatus().then(available => {
+      console.log('✅ Server AI Available:', available);
       setAiAvailable(available);
       aiAvailableRef.current = available;
       if (!available) {
-        console.warn('⚠️ AI parsing not available, using fallback parser');
+        console.warn('⚠️ Server AI parsing not available, using fallback parser');
       } else {
-        console.log('🤖 AI parsing enabled!');
+        console.log('🤖 Server AI parsing enabled!');
       }
     }).catch(error => {
-      console.error('❌ Error checking AI status:', error);
+      console.error('❌ Error checking server AI status:', error);
       setAiAvailable(false);
       aiAvailableRef.current = false;
     });
@@ -52,21 +97,20 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
         onProcessingChange?.(true);
         
         try {
-          // Use AI parsing if available and enabled, otherwise use regex-based parsing
-          console.log('🎤 Parsing transcript:', result.transcript);
-          console.log('🤖 AI Available (state):', aiAvailable, 'AI Available (ref):', aiAvailableRef.current, 'Use AI:', useAI);
-          console.log('🔍 Will use AI parsing:', useAI && aiAvailableRef.current);
+          // Use server AI parsing if available and enabled
+          console.log('🎤 Parsing transcript with server AI:', result.transcript);
+          console.log('🤖 Server AI Available:', aiAvailableRef.current, 'Use AI:', useAI);
           
           const command = (useAI && aiAvailableRef.current) 
-            ? await parseIntentAI(result.transcript)
-            : await parseIntentAI(result.transcript); // Use AI parsing even as fallback
+            ? await parseWithServerAI(result.transcript)
+            : await parseWithServerAI(result.transcript); // Always use server AI parsing
           
           console.log('📊 Parsed command:', command);
           onCommand(command);
         } catch (error) {
           console.error('❌ Error parsing command:', error);
-          // Fallback to basic parsing on error
-          const command = await parseIntentAI(result.transcript);
+          // Fallback parsing on error
+          const command = await parseWithServerAI(result.transcript);
           onCommand(command);
         }
         
@@ -123,7 +167,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
           const text = await transcribeFallback(blob);
           setTranscript(text);
           onTranscription(text);
-          const command = (useAI && aiAvailable) ? await parseIntentAI(text) : parseIntent(text);
+          const command = await parseWithServerAI(text);
           onCommand(command);
         } catch (e) {
           console.error('Transcription fallback error', e);
