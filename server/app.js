@@ -16,15 +16,20 @@ const { initDatabase } = process.env.DATABASE_URL
 
 const app = express();
 const server = http.createServer(app);
+// Centralize allowed origins so app CORS and socket.io stay in sync
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "https://voice-planner-client-hchjysqsd-lu-ius-projects.vercel.app",
+  /^https:\/\/.*\.vercel\.app$/, // All Vercel deployments
+  // Add your computer's IP address here if needed
+  "http://192.168.1.100:3000",
+  "http://192.168.0.100:3000",
+];
+
 const io = socketIo(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      /^https:\/\/.*\.vercel\.app$/, // All Vercel deployments
-      "http://192.168.1.100:3000",
-      "http://192.168.0.100:3000",
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST"]
   }
 });
@@ -33,15 +38,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://voice-planner-client-hchjysqsd-lu-ius-projects.vercel.app", // Your Vercel preview URL
-    /^https:\/\/.*\.vercel\.app$/, // All Vercel deployments
-    // Add your computer's IP address here
-    "http://192.168.1.100:3000",
-    "http://192.168.0.100:3000",
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());

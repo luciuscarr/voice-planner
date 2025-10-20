@@ -1,18 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { parseVoiceCommand, parseMultipleCommands } = require('../services/aiParser');
+const { parseVoiceCommand, parseMultipleCommands, transcribeAudio, isOpenAIConfigured } = require('../services/aiParser');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
-const OpenAI = require('openai');
-
-// Initialize OpenAI only if API key is available
-let openai = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  console.log('OpenAI API initialized in routes');
-} else {
-  console.log('OpenAI API key not found in routes - using fallback parsing only');
-}
 
 /**
  * POST /api/ai/parse
@@ -31,7 +21,7 @@ router.post('/parse', async (req, res) => {
     }
 
     // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!isOpenAIConfigured()) {
       return res.status(503).json({
         error: 'Service not configured',
         message: 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.'
@@ -96,23 +86,8 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ error: 'audio file required' });
     }
 
-    // Use Whisper via OpenAI Audio Transcriptions (if available)
-    if (!openai) {
-      return res.status(503).json({ 
-        error: 'OpenAI API not available - audio transcription requires API key',
-        fallback: 'Please use text input instead'
-      });
-    }
-
-    const filename = req.file.originalname || 'audio.webm';
-    const buffer = req.file.buffer;
-
-    const result = await openai.audio.transcriptions.create({
-      model: 'gpt-4o-mini-transcribe',
-      file: await new OpenAI.Files.create({ file: buffer, filename })
-    });
-
-    const transcript = result.text || '';
+    // Delegate transcription to service; it will check configuration
+    const transcript = await transcribeAudio(req.file);
     res.json({ success: true, transcript });
   } catch (error) {
     console.error('Transcription error:', error);

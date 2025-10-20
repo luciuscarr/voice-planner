@@ -15,6 +15,48 @@ if (process.env.OPENAI_API_KEY) {
   console.log('OpenAI API key not found - using fallback parsing only');
 }
 
+// Helper to expose whether OpenAI is configured
+function isOpenAIConfigured() {
+  return !!openai;
+}
+
+/**
+ * Transcribe an uploaded audio file object (multer) using OpenAI audio APIs.
+ * Returns transcript string or throws an error if unavailable.
+ * @param {object} file - multer file object with buffer and originalname
+ */
+async function transcribeAudio(file) {
+  if (!openai) {
+    throw new Error('OpenAI not configured');
+  }
+
+  if (!file || !file.buffer) {
+    throw new Error('No audio file provided');
+  }
+
+  // Use OpenAI's audio transcription endpoint. The openai package shape may vary by version.
+  // Try common usage pattern: openai.audio.transcriptions.create or openai.transcriptions.create
+  const filename = file.originalname || 'audio.webm';
+  try {
+    if (openai.audio && openai.audio.transcriptions && typeof openai.audio.transcriptions.create === 'function') {
+      const fileObj = await new OpenAI.Files.create({ file: file.buffer, filename });
+      const result = await openai.audio.transcriptions.create({ model: 'gpt-4o-mini-transcribe', file: fileObj });
+      return result.text || '';
+    }
+
+    // Fallback to older style
+    if (typeof openai.transcriptions === 'function') {
+      const res = await openai.transcriptions({ file: file.buffer, model: 'gpt-4o-mini-transcribe' });
+      return res.text || '';
+    }
+
+    throw new Error('OpenAI client does not support transcriptions in this SDK version');
+  } catch (err) {
+    console.error('Transcription via OpenAI failed:', err);
+    throw err;
+  }
+}
+
 // Fallback: extract reminder offsets like "30 minutes and an hour before"
 function extractReminderOffsets(text) {
   const lower = text.toLowerCase();
