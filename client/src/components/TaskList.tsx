@@ -5,6 +5,11 @@ import { importCalendarAsTasks } from '../utils/calendarHelper';
 import { TaskItem } from './TaskItem';
 import { Filter, Search, Plus } from 'lucide-react';
 
+// Body of the task list, which deals with filtering and displaying tasks from /TaskItem.tsx.
+
+// --------------------
+
+
 interface TaskListProps {
   tasks: Task[];
   onToggle: (id: string) => void;
@@ -30,9 +35,8 @@ export const TaskList: React.FC<TaskListProps> = ({
 }) => {
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'created' | 'due' | 'priority'>('created');
 
-  const filteredAndSortedTasks = useMemo(() => {
+  const filteredTasks = useMemo(() => {
     let filtered = tasks;
 
     // Apply search filter
@@ -62,25 +66,9 @@ export const TaskList: React.FC<TaskListProps> = ({
         break;
     }
 
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'due':
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        case 'priority':
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        case 'created':
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
 
     return filtered;
-  }, [tasks, filter, searchQuery, sortBy]);
+  }, [tasks, filter, searchQuery]);
 
   const taskStats = useMemo(() => {
     const total = tasks.length;
@@ -136,8 +124,8 @@ export const TaskList: React.FC<TaskListProps> = ({
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
-      end.setDate(end.getDate() + 4);
-      end.setHours(23, 59, 59, 999);
+      end.setDate(end.getDate() + 4); // +4 Days helps avoid edge cases with timezones, we just chop off whats not important.
+      end.setHours(23, 59, 59, 999); 
       const imported = await importCalendarAsTasks(token, start, end);
 
       if (imported.length > 0) {
@@ -231,22 +219,12 @@ export const TaskList: React.FC<TaskListProps> = ({
           ))}
         </div>
 
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'created' | 'due' | 'priority')}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="created">Sort by Created</option>
-          <option value="due">Sort by Due Date</option>
-          <option value="priority">Sort by Priority</option>
-        </select>
       </div>
 
       {/* Task List */}
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
-          {filteredAndSortedTasks.length === 0 ? (
+          {filteredTasks.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -259,7 +237,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               </p>
             </motion.div>
           ) : (
-            filteredAndSortedTasks.map((task) => (
+            filteredTasks.map((task) => (
               <TaskItem
                 key={task.id}
                 task={task}
