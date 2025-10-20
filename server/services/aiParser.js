@@ -148,34 +148,46 @@ function parseTimeInTranscript(transcript) {
   
   console.log(`Debug: Parsing time from "${transcript}" (lowercase: "${lowerTranscript}")`);
   
-  // Match patterns like "8 am", "2 pm", "8:30 am", "2:15 pm", "8pm", "2pm"
+  // Match patterns like "8 am", "2 pm", "8:30 am", "2:15 pm", "3 p.m.", "3:00 p.m."
   const timePatterns = [
-    /(\d{1,2}):(\d{2})\s*(am|pm)/i,
-    /(\d{1,2})\s*(am|pm)/i,
-    /(\d{1,2}):(\d{2})(am|pm)/i,
-    /(\d{1,2})(am|pm)/i
+    /(\d{1,2}):(\d{2})\s*(a\.?m\.?|p\.?m\.?)/i,
+    /(\d{1,2})\s*(a\.?m\.?|p\.?m\.?)/i,
+    /(\d{1,2}):(\d{2})(a\.?m\.?|p\.?m\.?)/i,
+    /(\d{1,2})(a\.?m\.?|p\.?m\.?)/i
   ];
-  
+
   for (let i = 0; i < timePatterns.length; i++) {
     const pattern = timePatterns[i];
     const match = lowerTranscript.match(pattern);
     console.log(`Debug: Pattern ${i + 1} (${pattern}): ${match ? 'MATCH' : 'NO MATCH'}`);
-    
+
     if (match) {
       console.log(`Debug: Match groups:`, match);
+      // match[1] is hours, match[2] may be minutes or period depending on pattern
       let hours = parseInt(match[1]);
-      let minutes = match[2] ? parseInt(match[2]) : 0;
-      const period = match[3] || match[2];
-      
-      console.log(`Debug: Extracted - hours: ${hours}, minutes: ${minutes}, period: ${period}`);
-      
+      let minutes = 0;
+      let periodRaw = null;
+
+      if (match.length >= 3 && /\d{2}/.test(match[2])) {
+        minutes = parseInt(match[2]);
+        periodRaw = match[3] || null;
+      } else if (match.length >= 3) {
+        // pattern without explicit minutes, match[2] is period
+        periodRaw = match[2] || null;
+      }
+
+      // Normalize period (e.g., 'p.m.' -> 'pm')
+      const period = periodRaw ? periodRaw.replace(/\./g, '').toLowerCase() : null;
+
+      console.log(`Debug: Extracted - hours: ${hours}, minutes: ${minutes}, period: ${periodRaw}`);
+
       // Convert to 24-hour format
       if (period === 'pm' && hours !== 12) {
         hours += 12;
       } else if (period === 'am' && hours === 12) {
         hours = 0;
       }
-      
+
       const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       console.log(`Debug: Final time string: ${timeString}`);
       return timeString;
@@ -253,7 +265,8 @@ function preprocessTranscript(transcript) {
   });
   
   // Detect potential intent hints
-  const hasTime = /(\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\bat\s+\d{1,2}(:\d{2})?\b)/i.test(transcript);
+  // Accept forms like "3 pm", "3:00 pm", "3 p.m.", "3:00 p.m." (with dots and optional spaces)
+  const hasTime = /(\b\d{1,2}(:\d{2})?\s*(?:a\.?m\.?|p\.?m\.? )?\b|\bat\s+\d{1,2}(:\d{2})?\b)/i.test(transcript);
   const hasDate = /(today|tomorrow|yesterday|next week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(transcript);
   const hasPriority = /(urgent|important|high priority|low priority|asap|immediately|critical)/i.test(transcript);
   
@@ -327,12 +340,24 @@ async function parseVoiceCommand(transcript) {
     const currentDateTime = now.toISOString();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Using GPT-4o-mini for cost efficiency
-      messages: [
-        {
-          role: "system",
-          content: `You are a voice command parser for a task planning application. Your job is to understand natural language commands and extract structured data.
+    // Helper: try to extract JSON object from model output robustly
+    const extractJSON = (text) => {
+      if (!text || typeof text !== 'string') return null;
+      // Find first { and last } and attempt to JSON.parse the substring(s)
+      const start = text.indexOf('{');
+      const last = text.lastIndexOf('}');
+      if (start === -1 || last === -1 || last <= start) return null;
+      const candidate = text.slice(start, last + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch (e) {
+        // Try a looser approach: remove trailing commas
+        const cleaned = candidate.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
+        try { return JSON.parse(cleaned); } catch (e2) { return null; }
+      }
+    };
+
+    const systemPrompt = `You are a voice command parser for a task planning application. Your job is to understand natural language commands and extract structured data.
 
 Current date/time (UTC ISO): ${currentDateTime}
 Current day (user-local may differ): ${currentDay}
@@ -358,34 +383,14 @@ IMPORTANT: When the user mentions a weekday name (like "Saturday", "Sunday", "Mo
 5. Always provide the date in YYYY-MM-DD format in the "date" field
 6. If a specific time is mentioned, include it in the "time" field as HH:mm (24-hour format)
 
-COMMON PATTERNS TO RECOGNIZE:
-- "schedule for saturday" = schedule intent with saturday date
-- "schedule an appointment saturday" = schedule intent with saturday date  
-- "schedule for october 18th" = schedule intent with specific date
-- "schedule for october 18th at 8pm" = schedule intent with specific date and time
+Be flexible in interpreting titles — minor filler words are fine. But ALWAYS return a valid JSON object that matches the schema below. DO NOT output any explanatory text unless requested. Return JSON only.`;
 
-Use the preprocessing hints above to better understand the user's intent. The highlighted keywords can help you identify the action and context more accurately.
-
-If the user message contains hints like [UserTimeZone:America/Los_Angeles] or [UserOffsetMinutes:-420], interpret weekday names (e.g., "Thursday") against that user timezone.
-
-Parse the user's voice command and return a JSON object with the following STRICT structure and formatting (return JSON only):
-{
-  "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
-  "confidence": number, // 0.0 to 1.0
-  "extractedData": {
-    "title": string, // cleaned title without command words/time phrases
-    "dueDate": string | null, // ISO 8601 if exact datetime resolved, else null
-    "date": string | null, // YYYY-MM-DD if a calendar date is mentioned
-    "time": string | null, // HH:mm (24-hour) if a specific time is mentioned
-    "priority": "low" | "medium" | "high",
-    "timePreference": "morning" | "afternoon" | "evening" | null,
-    "duration": number | null, // minutes
-    "description": string | null,
-    "reminders": number[] | null, // minutes before due time to notify (e.g., [60,30])
-    "applyToLastScheduled": boolean | null // true if refers to the most recent scheduled item (e.g., "this appointment")
-  }
-}
-`
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Using GPT-4o-mini for cost efficiency
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
         },
         {
           role: "user",
@@ -395,8 +400,34 @@ Parse the user's voice command and return a JSON object with the following STRIC
       temperature: 0.2, // Lower temperature for deterministic formatting
       response_format: { type: "json_object" }
     });
-
-    const parsedResponse = JSON.parse(completion.choices[0].message.content);
+    // Support multiple possible shapes: some SDKs return .choices[0].message.content, others return .output_text
+    const raw = (completion && completion.choices && completion.choices[0] && (completion.choices[0].message?.content || completion.choices[0].text || completion.choices[0].message)) || completion;
+    let parsedResponse = null;
+    try {
+      // If SDK already returned parsed JSON, use it
+      if (typeof raw === 'object' && raw !== null && raw.content && typeof raw.content === 'object') parsedResponse = raw.content;
+      else {
+        const candidate = typeof raw === 'string' ? raw : (raw?.message?.content || raw?.text || JSON.stringify(raw));
+        parsedResponse = extractJSON(candidate) || JSON.parse(candidate);
+      }
+    } catch (e) {
+      // Retry: ask the model to return ONLY the JSON
+      try {
+        const retry = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `The previous response could not be parsed. Please return ONLY the JSON object that matches the required schema with no extra text. Here is the original user message:\n\n${transcript}` }
+          ],
+          temperature: 0.0,
+          max_tokens: 700
+        });
+        const retryRaw = (retry && retry.choices && retry.choices[0] && (retry.choices[0].message?.content || retry.choices[0].text)) || null;
+        parsedResponse = extractJSON(retryRaw);
+      } catch (e2) {
+        throw new Error('Failed to parse model JSON output');
+      }
+    }
     
     // If AI didn't parse a date but we can detect a weekday, add it
     if (!parsedResponse.extractedData?.date && !parsedResponse.extractedData?.dueDate) {
