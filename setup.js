@@ -8,7 +8,7 @@ console.log('Setting up Voice Planner...\n');
 
 // Check if we're in the right directory
 if (!fs.existsSync('package.json')) {
-  console.error('❌ Please run this script from the voice-planner root directory');
+  console.error('Please run this script from the voice-planner root directory');
   process.exit(1);
 }
 

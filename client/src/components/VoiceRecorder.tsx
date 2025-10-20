@@ -5,6 +5,8 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { VoiceCommand } from '@shared/types';
 import { transcribeFallback } from '../utils/transcribeFallback';
 
+// Handles recording and transcription. Sets important states and variables for the app state.
+
 // Server-side AI parsing functions
 const API_URL = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
 
@@ -69,18 +71,18 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onCommand, onTrans
 
   // Check server AI availability on mount
   useEffect(() => {
-    console.log('🔍 Checking server AI availability...');
+    console.log('Checking server AI availability...');
     checkServerAIStatus().then(available => {
-      console.log('✅ Server AI Available:', available);
+      console.log('Server AI Available:', available);
       setAiAvailable(available);
       aiAvailableRef.current = available;
       if (!available) {
-        console.warn('⚠️ Server AI parsing not available, using fallback parser');
+        console.warn('Server AI parsing not available, using fallback parser');
       } else {
-        console.log('🤖 Server AI parsing enabled!');
+        console.log('Server AI parsing enabled!');
       }
     }).catch(error => {
-      console.error('❌ Error checking server AI status:', error);
+      console.error('Error checking server AI status:', error);
       setAiAvailable(false);
       aiAvailableRef.current = false;
     });

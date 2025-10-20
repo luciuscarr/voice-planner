@@ -5,6 +5,9 @@ import { CalendarSync } from './CalendarSync';
 import { Plus, Trash2 } from 'lucide-react';
 import { importCalendarAsTasks } from '../utils/calendarHelper';
 
+// Holds the Calendar items. Handlse importing from and exporting to google calendar ( in mass ) and displaying tasks with TaskItem.tsx.
+// --------------------
+
 interface ThreeDayCalendarProps {
   tasks: Task[];
   onSync: (task: Task) => void;

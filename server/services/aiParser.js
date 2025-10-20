@@ -10,9 +10,9 @@ if (process.env.OPENAI_API_KEY) {
   openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
-  console.log('✅ OpenAI API initialized');
+  console.log('OpenAI API initialized');
 } else {
-  console.log('⚠️ OpenAI API key not found - using fallback parsing only');
+  console.log('OpenAI API key not found - using fallback parsing only');
 }
 
 // Fallback: extract reminder offsets like "30 minutes and an hour before"

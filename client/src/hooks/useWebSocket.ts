@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Task, WebSocketMessage } from '@voice-planner/shared';
 
+// Establishes websocket connection.
+
 interface UseWebSocketReturn {
   socket: Socket | null;
   isConnected: boolean;

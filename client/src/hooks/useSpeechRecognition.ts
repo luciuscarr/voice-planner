@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { SpeechRecognitionResult } from '@shared/types';
 
+// If the browser has integrated transcrition services, this hook will use them.
+// --------------------
+
 interface UseSpeechRecognitionOptions {
   onResult?: (result: SpeechRecognitionResult) => void;
   onError?: (error: string) => void;

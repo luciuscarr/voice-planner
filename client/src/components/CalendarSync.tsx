@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Check, X, RefreshCw, Settings, ExternalLink } from 'lucide-react';
 
-// Calendar exporter! Handles syncing/removing new tasks to/from Google Calendar.
+// Calendar exporter! Handles syncing/removing new (singular) tasks to/from Google Calendar.
 
 // --------------------
 
