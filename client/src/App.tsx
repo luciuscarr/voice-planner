@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Settings, Mic, Sun, Moon } from 'lucide-react';
+import { HelpCircle, Mic } from 'lucide-react';
 import { VoiceRecorder } from './components/VoiceRecorder';
 import { ThreeDayCalendar } from './components/ThreeDayCalendar';
 import { CommandHint } from './components/CommandHint';
@@ -8,13 +8,8 @@ import { Task, VoiceCommand } from '@shared/types';
 import { fetchCalendarEvents, findFreeTimeSlots, findBestTimeSlot, formatTimeSlot, parseTimePreference } from './utils/calendarHelper';
 
 
-// Mock data for development
-const mockTasks: Task[] = [
-
-];
-
 function App() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [lastScheduledTaskId, setLastScheduledTaskId] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
@@ -53,12 +48,12 @@ function App() {
   // Debug: Log API URL on mount
   useState(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
-    console.log('🔧 API URL:', apiUrl);
-    console.log('🔧 VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('🔧 All env vars:', import.meta.env);
+    console.log('API URL:', apiUrl);
+    console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('All env vars:', import.meta.env);
     
     if (!import.meta.env.VITE_API_URL) {
-      console.error('⚠️ VITE_API_URL is not set! Using production server fallback.');
+      console.error('VITE_API_URL is not set! Using production server fallback.');
     }
   });
 

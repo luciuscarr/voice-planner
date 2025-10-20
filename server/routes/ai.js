@@ -9,9 +9,9 @@ const OpenAI = require('openai');
 let openai = null;
 if (process.env.OPENAI_API_KEY) {
   openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  console.log('✅ OpenAI API initialized in routes');
+  console.log('OpenAI API initialized in routes');
 } else {
-  console.log('⚠️ OpenAI API key not found in routes - using fallback parsing only');
+  console.log('OpenAI API key not found in routes - using fallback parsing only');
 }
 
 /**

@@ -1,5 +1,9 @@
 // Helper functions for Google Calendar integration
 
+
+// Largely handles "find me time to...."  tasks.
+
+
 export interface CalendarEvent {
   id: string;
   summary: string;
