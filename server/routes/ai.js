@@ -21,7 +21,7 @@ if (process.env.OPENAI_API_KEY) {
  */
 router.post('/parse', async (req, res) => {
   try {
-    const { transcript, multipleCommands = true, timeZone, offsetMinutes } = req.body;
+  const { transcript, multipleCommands = true, timeZone, offsetMinutes, useRawChatGPT = false } = req.body;
     
     if (!transcript || typeof transcript !== 'string') {
       return res.status(400).json({ 
@@ -43,9 +43,9 @@ router.post('/parse', async (req, res) => {
 
     let result;
     if (multipleCommands) {
-      result = await parseMultipleCommands(`${transcript}${tzHint}`);
+      result = await parseMultipleCommands(`${transcript}${tzHint}`, { useRawChatGPT });
     } else {
-      result = await parseVoiceCommand(`${transcript}${tzHint}`);
+      result = await parseVoiceCommand(`${transcript}${tzHint}`, { useRawChatGPT });
     }
     
     res.json({
