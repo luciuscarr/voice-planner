@@ -704,6 +704,67 @@ async function parseMultipleCommands(transcript) {
       return { ...cmd, extractedData: ed };
     });
 
+    // Deduplicate similar commands that refer to the same date/title but one is date-only
+    // and another includes a specific time. Prefer the one with an explicit time/dueDate.
+    try {
+      const normalizedKey = (cmd) => {
+        const ed = cmd.extractedData || {};
+        const title = (ed.title || cmd.text || '')
+          .toString()
+          .toLowerCase()
+          .replace(/\b(appointment|meeting|event|task|reminder)\b/gi, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        let datePart = '';
+        if (ed.date) datePart = ed.date;
+        else if (ed.dueDate) {
+          const d = new Date(ed.dueDate);
+          if (!isNaN(d.getTime())) datePart = d.toISOString().split('T')[0];
+        }
+
+        return `${title}|${datePart}`;
+      };
+
+      const seen = new Map();
+      const deduped = [];
+      for (const cmd of parsedCommands) {
+        const key = normalizedKey(cmd);
+        if (!key) {
+          deduped.push(cmd);
+          continue;
+        }
+
+        if (!seen.has(key)) {
+          seen.set(key, cmd);
+          deduped.push(cmd);
+          continue;
+        }
+
+        // If duplicate exists, prefer the one with explicit time or dueDate
+        const existing = seen.get(key);
+        const exEd = existing.extractedData || {};
+        const newEd = cmd.extractedData || {};
+
+        const existingHasTime = !!(exEd.time || exEd.dueDate);
+        const newHasTime = !!(newEd.time || newEd.dueDate);
+
+        if (newHasTime && !existingHasTime) {
+          // replace in place
+          const idx = deduped.indexOf(existing);
+          if (idx >= 0) deduped[idx] = cmd;
+          seen.set(key, cmd);
+        } else {
+          // keep existing (or both lack time) - do nothing
+        }
+      }
+
+      parsedCommands = deduped;
+    } catch (e) {
+      console.error('Deduplication error in parseMultipleCommands:', e);
+    }
+
     return parsedCommands;
 
   } catch (error) {
