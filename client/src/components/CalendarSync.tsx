@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Check, X, RefreshCw, Settings, ExternalLink } from 'lucide-react';
 
+// Calendar exporter! Handles syncing/removing new tasks to/from Google Calendar.
+
+// --------------------
+
+
 interface CalendarSyncProps {
   task: any;
   onSync: (task: any) => void;
@@ -39,14 +44,14 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       
       // Get authorization URL
       const apiUrl = import.meta.env.VITE_API_URL || 'https://voice-planner.onrender.com';
-      console.log('🔗 Connecting to API:', apiUrl);
+      console.log('Connecting to API:', apiUrl);
       
       const response = await fetch(`${apiUrl}/api/calendar/auth-url`);
-      console.log('📡 Response status:', response.status);
+      console.log('Response status:', response.status);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('❌ API Error:', errorData);
+        console.error('API Error:', errorData);
         
         if (errorData.error?.includes('credentials not configured')) {
           setErrorMessage('Google Calendar integration is not configured on the server. Please contact the administrator.');
@@ -91,7 +96,7 @@ export const CalendarSync: React.FC<CalendarSyncProps> = ({ task, onSync, onUnsy
       }, 1000);
 
     } catch (error) {
-      console.error('❌ Error connecting to Google Calendar:', error);
+      console.error('Error connecting to Google Calendar:', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       setErrorMessage(`Calendar error: ${errorMsg}`);
       setSyncStatus('error');

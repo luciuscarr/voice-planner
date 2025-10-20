@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, Settings, Mic, Sun, Moon } from 'lucide-react';
 import { VoiceRecorder } from './components/VoiceRecorder';
-import { TaskList } from './components/TaskList';
 import { ThreeDayCalendar } from './components/ThreeDayCalendar';
 import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';

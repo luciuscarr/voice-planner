@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, X, Mic, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 
+// Just a simple overlay for the voice commands guide.
+// No detailed functionality.
+
 interface CommandHintProps {
   isVisible: boolean;
   onClose: () => void;

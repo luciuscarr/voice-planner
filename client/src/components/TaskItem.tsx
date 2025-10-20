@@ -14,25 +14,15 @@ interface TaskItemProps {
   onUnsync: (taskId: string) => void;
 }
 
+// Body of the task item. Handles display, sync, unsync, and deletion.
+
+
+// --------------------
+// Previously used to handle task editing, which has been temporarily removed to be reworked with a more robust system.
+// Priority coloring is a work in progress and largely inert.
+
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onUpdate, onSync, onUnsync }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(task.title);
 
-  const handleSave = () => {
-    if (editTitle.trim()) {
-      onUpdate(task.id, { title: editTitle.trim() });
-      setIsEditing(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      setEditTitle(task.title);
-      setIsEditing(false);
-    }
-  };
 
   const formatDueDate = (dateString: string) => {
     // dateString is ISO; convert to user's local time for display
@@ -46,7 +36,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
           : format(date, 'MMM d');
 
     const timeLabel = format(date, 'h:mm a');
-    // Only show time if it is not midnight (meaning a time was likely specified)
     const showTime = !(date.getHours() === 0 && date.getMinutes() === 0);
     return showTime ? `${dateLabel} • ${timeLabel}` : dateLabel;
   };
@@ -101,23 +90,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {isEditing ? (
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onBlur={handleSave}
-              onKeyDown={handleKeyPress}
-              className="w-full text-lg font-medium border-none outline-none bg-transparent"
-              autoFocus
-            />
-          ) : (
+          {(
             <h3 
               className={`
                 text-lg font-medium cursor-pointer hover:text-blue-600 transition-colors
                 ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}
               `}
-              onClick={() => setIsEditing(true)}
             >
               {task.title}
             </h3>
@@ -171,7 +149,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
           />
           
           <motion.button
-            onClick={() => setIsEditing(true)}
             className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
