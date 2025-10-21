@@ -8,6 +8,25 @@ import { CommandHint } from './components/CommandHint';
 import { Task, VoiceCommand } from '@shared/types';
 import { fetchCalendarEvents, findFreeTimeSlots, findBestTimeSlot, formatTimeSlot, parseTimePreference } from './utils/calendarHelper';
 
+// Fix this later with the include.
+// Temporary local definition until shared types are properly resolved
+interface Attendee {
+  email: string;
+  displayName?: string;
+  responseStatus?: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+}
+
+// Extend Task interface locally to include attendees
+interface TaskWithAttendees extends Task {
+  attendees?: Attendee[];
+}
+
+// Extend VoiceCommand extractedData to include attendees
+interface VoiceCommandWithAttendees extends VoiceCommand {
+  extractedData?: VoiceCommand['extractedData'] & {
+    attendees?: Attendee[];
+  };
+}
 
 // Mock data for development
 const mockTasks: Task[] = [
@@ -64,7 +83,7 @@ function App() {
   });
 
   // Handle voice commands (can be single or multiple)
-  const handleVoiceCommand = async (command: VoiceCommand | VoiceCommand[]) => {
+  const handleVoiceCommand = async (command: VoiceCommandWithAttendees | VoiceCommandWithAttendees[]) => {
     setIsProcessing(true);
     
     const commands = Array.isArray(command) ? command : [command];
@@ -153,7 +172,7 @@ function App() {
       }
       
       if (cmd.intent === 'task' || cmd.intent === 'reminder' || cmd.intent === 'note' || cmd.intent === 'schedule') {
-        const newTask: Task = {
+        const newTask: TaskWithAttendees = {
           id: `${Date.now()}-${index}`,
           title: cmd.extractedData?.title || cmd.text,
           description: cmd.intent === 'note' ? 'Voice note' : undefined,
@@ -166,6 +185,8 @@ function App() {
             const merged = Array.from(new Set([...r1, ...r2]));
             return merged.length > 0 ? merged : undefined;
           })(),
+          // Include attendees if present
+          attendees: cmd.extractedData?.attendees || undefined,
           // Build dueDate in user's LOCAL timezone from AI's date/time when available
           dueDate: (() => {
             const due = cmd.extractedData?.dueDate;
@@ -254,7 +275,7 @@ function App() {
   };
 
   // Handle "find time" commands
-  const handleFindTimeCommand = async (command: VoiceCommand) => {
+  const handleFindTimeCommand = async (command: VoiceCommandWithAttendees) => {
     try {
       // Check if user has connected Google Calendar
       const accessToken = localStorage.getItem('google_access_token');
@@ -322,13 +343,14 @@ function App() {
         return 'Study';
       })();
       
-      const newTask: Task = {
+      const newTask: TaskWithAttendees = {
         id: Date.now().toString(),
         title: taskTitle || 'Scheduled task',
         description: `Suggested time: ${formatTimeSlot(bestSlot)}`,
         completed: false,
         priority: command.extractedData?.priority || 'medium',
         dueDate: bestSlot.start.toISOString(),
+        attendees: command.extractedData?.attendees || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

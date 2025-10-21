@@ -282,183 +282,140 @@ async function parseVoiceCommand(transcript) {
     console.log('Using fallback parser (no OpenAI API key)');
     const weekdayDate = parseWeekdayInTranscript(transcript);
     const timeMatch = parseTimeInTranscript(transcript);
-    
+
     // Clean up the title by removing command words and time references
     let cleanTitle = transcript
       .replace(/\b(schedule|appointment|meeting|event|for|at)\b/gi, '')
       .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
       .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
       .trim();
-    
-    // If title is empty or just whitespace, use a default
-    if (!cleanTitle || cleanTitle.length < 2) {
-      cleanTitle = 'Appointment';
-    }
-    
+
+    if (!cleanTitle || cleanTitle.length < 2) cleanTitle = 'Appointment';
+
     return {
       text: transcript,
       intent: 'schedule',
       confidence: 0.5,
-      extractedData: {
-        title: cleanTitle,
-        date: weekdayDate,
-        time: timeMatch,
-        priority: 'medium'
-      },
+      extractedData: { title: cleanTitle, date: weekdayDate, time: timeMatch, priority: 'medium' },
       error: 'Using fallback parser (no OpenAI API key)'
     };
   }
-  
-  try {
-    // Preprocess transcript to extract keywords and context
-    const preprocessed = preprocessTranscript(transcript);
-    
-    // Also analyze keywords per individual task (for multi-command transcripts)
-    const perTaskAnalysis = analyzeKeywordsPerTask(transcript);
-    
-    console.log('AI Parser - Preprocessing results:', {
-      originalText: transcript,
-      highlightedKeywords: preprocessed.highlightedKeywords,
-      context: preprocessed.context,
-      perTaskAnalysis: perTaskAnalysis
+
+  // helpers
+  const extractJSON = (text) => {
+    if (!text || typeof text !== 'string') return null;
+    const start = text.indexOf('{');
+    const last = text.lastIndexOf('}');
+    if (start === -1 || last === -1 || last <= start) return null;
+    const candidate = text.slice(start, last + 1);
+    try { return JSON.parse(candidate); } catch (e) {}
+    try { return JSON.parse(candidate.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']')); } catch (e2) { return null; }
+  };
+
+  const callChatModelRaw = async (text) => {
+    const systemRaw = 'You are a JSON-only parser. Given a user\'s voice transcript, return a single JSON object that matches the schema: {"intent":"task|reminder|note|schedule|findTime|delete|complete|unknown","confidence":0.0-1.0,"extractedData":{...}}. Do not output any text besides the JSON.';
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [{ role: 'system', content: systemRaw }, { role: 'user', content: text }],
+      temperature: 0.2,
+      max_tokens: 700
     });
-    
+    const raw = (completion && completion.choices && completion.choices[0] && (completion.choices[0].message?.content || completion.choices[0].text)) || null;
+    let parsed = extractJSON(raw);
+    if (!parsed) {
+      const retry = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [{ role: 'system', content: systemRaw }, { role: 'user', content: `Return ONLY the JSON object for: ${text}` }],
+        temperature: 0.0,
+        max_tokens: 700
+      });
+      const retryRaw = (retry && retry.choices && retry.choices[0] && (retry.choices[0].message?.content || retry.choices[0].text)) || null;
+      parsed = extractJSON(retryRaw);
+    }
+    return parsed;
+  };
+
+  try {
+    // Decide whether to use the raw ChatGPT JSON-only parser.
+    // Priority:
+    //  - If env USE_RAW_CHATGPT === '0' -> force OFF
+    //  - If env USE_RAW_CHATGPT === '1' -> force ON
+    //  - Else if request provided a useRawChatGPT flag, use that
+    //  - Otherwise default to RAW mode ON
+    const useRaw = (() => {
+      if (process.env.USE_RAW_CHATGPT === '0') return false;
+      if (process.env.USE_RAW_CHATGPT === '1') return true;
+      if (typeof arguments[1] === 'object' && arguments[1] && typeof arguments[1].useRawChatGPT !== 'undefined') {
+        return !!arguments[1].useRawChatGPT;
+      }
+      return true; // default: enable raw ChatGPT parsing
+    })();
+
+    console.log(`AI Parser - raw mode = ${useRaw ? 'ENABLED' : 'DISABLED'} (USE_RAW_CHATGPT=${process.env.USE_RAW_CHATGPT || 'unset'})`);
+    if (useRaw) {
+      const parsedResponse = await callChatModelRaw(transcript);
+      if (parsedResponse) return { text: transcript, ...parsedResponse };
+      // fall through to richer prompt if raw fails
+    }
+
+    // Preprocess and analyze
+    const preprocessed = preprocessTranscript(transcript);
+    const perTaskAnalysis = analyzeKeywordsPerTask(transcript);
+    console.log('AI Parser - Preprocessing results:', { originalText: transcript, highlightedKeywords: preprocessed.highlightedKeywords, context: preprocessed.context, perTaskAnalysis });
+
     const now = new Date();
     const currentDateTime = now.toISOString();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
-    
+
+    const systemPrompt = `You are a voice command parser for a task planning application. Your job is to understand natural language commands and extract structured data.\n\nCurrent date/time (UTC ISO): ${currentDateTime}\nCurrent day (user-local may differ): ${currentDay}\n\nPREPROCESSING HINTS:\n- Highlighted Keywords: ${preprocessed.highlightedKeywords.join(', ') || 'none'}\n- Has Time Reference: ${preprocessed.context.hasTime ? 'YES' : 'NO'}\n- Has Date Reference: ${preprocessed.context.hasDate ? 'YES' : 'NO'}\n- Has Priority: ${preprocessed.context.hasPriority ? 'YES' : 'NO'}\n- Detected Action: ${preprocessed.context.detectedAction || 'none'}\n- Detected Task Type: ${preprocessed.context.detectedTaskType || 'none'}\n\nPER-TASK KEYWORD ANALYSIS:\n${perTaskAnalysis.length > 1 ? perTaskAnalysis.map((task, i) => `Task ${i+1}: "${task.text}" - Keywords: [${task.keywords.join(', ') || 'none'}] - Action: ${task.detectedAction || 'none'} - Type: ${task.detectedTaskType || 'none'}`).join('\n') : 'Single task detected'}\n\nIMPORTANT: When the user mentions a weekday name (like "Saturday", "Sunday", "Monday", etc.), you MUST: 1) Calculate the specific date for that weekday; 2) If it's the current day, use today's date; 3) If it's a future weekday in the current week, use that date; 4) If it's a past weekday in the current week, use the same weekday NEXT week; 5) Always provide the date in YYYY-MM-DD format in the "date" field; 6) If a specific time is mentioned, include it in the "time" field as HH:mm (24-hour format).\n\nBe flexible in interpreting titles — minor filler words are fine. But ALWAYS return a valid JSON object that matches the schema below. DO NOT output any explanatory text unless requested. Return JSON only.`;
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Using GPT-4o-mini for cost efficiency
-      messages: [
-        {
-          role: "system",
-          content: `You are a voice command parser for a task planning application. Your job is to understand natural language commands and extract structured data.
-
-Current date/time (UTC ISO): ${currentDateTime}
-Current day (user-local may differ): ${currentDay}
-
-PREPROCESSING HINTS:
-- Highlighted Keywords: ${preprocessed.highlightedKeywords.join(', ') || 'none'}
-- Has Time Reference: ${preprocessed.context.hasTime ? 'YES' : 'NO'}
-- Has Date Reference: ${preprocessed.context.hasDate ? 'YES' : 'NO'}
-- Has Priority: ${preprocessed.context.hasPriority ? 'YES' : 'NO'}
-- Detected Action: ${preprocessed.context.detectedAction || 'none'}
-- Detected Task Type: ${preprocessed.context.detectedTaskType || 'none'}
-
-PER-TASK KEYWORD ANALYSIS:
-${perTaskAnalysis.length > 1 ? perTaskAnalysis.map((task, i) => 
-  `Task ${i + 1}: "${task.text}" - Keywords: [${task.keywords.join(', ') || 'none'}] - Action: ${task.detectedAction || 'none'} - Type: ${task.detectedTaskType || 'none'}`
-).join('\n') : 'Single task detected'}
-
-IMPORTANT: When the user mentions a weekday name (like "Saturday", "Sunday", "Monday", etc.), you MUST:
-1. Calculate the specific date for that weekday
-2. If it's the current day, use today's date
-3. If it's a future weekday in the current week, use that date
-4. If it's a past weekday in the current week, use the same weekday NEXT week
-5. Always provide the date in YYYY-MM-DD format in the "date" field
-6. If a specific time is mentioned, include it in the "time" field as HH:mm (24-hour format)
-
-COMMON PATTERNS TO RECOGNIZE:
-- "schedule for saturday" = schedule intent with saturday date
-- "schedule an appointment saturday" = schedule intent with saturday date  
-- "schedule for october 18th" = schedule intent with specific date
-- "schedule for october 18th at 8pm" = schedule intent with specific date and time
-
-Use the preprocessing hints above to better understand the user's intent. The highlighted keywords can help you identify the action and context more accurately.
-
-If the user message contains hints like [UserTimeZone:America/Los_Angeles] or [UserOffsetMinutes:-420], interpret weekday names (e.g., "Thursday") against that user timezone.
-
-Parse the user's voice command and return a JSON object with the following STRICT structure and formatting (return JSON only):
-{
-  "intent": "task" | "reminder" | "note" | "schedule" | "findTime" | "delete" | "complete" | "unknown",
-  "confidence": number, // 0.0 to 1.0
-  "extractedData": {
-    "title": string, // cleaned title without command words/time phrases
-    "dueDate": string | null, // ISO 8601 if exact datetime resolved, else null
-    "date": string | null, // YYYY-MM-DD if a calendar date is mentioned
-    "time": string | null, // HH:mm (24-hour) if a specific time is mentioned
-    "priority": "low" | "medium" | "high",
-    "timePreference": "morning" | "afternoon" | "evening" | null,
-    "duration": number | null, // minutes
-    "description": string | null,
-    "reminders": number[] | null, // minutes before due time to notify (e.g., [60,30])
-    "applyToLastScheduled": boolean | null // true if refers to the most recent scheduled item (e.g., "this appointment")
-  }
-}
-`
-        },
-        {
-          role: "user",
-          content: transcript
-        }
-      ],
-      temperature: 0.2, // Lower temperature for deterministic formatting
-      response_format: { type: "json_object" }
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: transcript } ],
+      temperature: 0.2,
+      response_format: { type: 'json_object' }
     });
 
-    const parsedResponse = JSON.parse(completion.choices[0].message.content);
-    
-    // If AI didn't parse a date but we can detect a weekday, add it
-    if (!parsedResponse.extractedData?.date && !parsedResponse.extractedData?.dueDate) {
-      const weekdayDate = parseWeekdayInTranscript(transcript);
-      if (weekdayDate) {
-        parsedResponse.extractedData = parsedResponse.extractedData || {};
-        parsedResponse.extractedData.date = weekdayDate;
+    const raw = (completion && completion.choices && completion.choices[0] && (completion.choices[0].message?.content || completion.choices[0].text || completion.choices[0].message)) || completion;
+    let parsedResponse = null;
+    try {
+      if (typeof raw === 'object' && raw !== null && raw.content && typeof raw.content === 'object') parsedResponse = raw.content;
+      else {
+        const candidate = typeof raw === 'string' ? raw : (raw?.message?.content || raw?.text || JSON.stringify(raw));
+        parsedResponse = extractJSON(candidate) || JSON.parse(candidate);
+      }
+    } catch (e) {
+      try {
+        const retry = await openai.chat.completions.create({ model: process.env.OPENAI_MODEL || 'gpt-4o-mini', messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: `The previous response could not be parsed. Please return ONLY the JSON object that matches the required schema with no extra text. Here is the original user message:\n\n${transcript}` } ], temperature: 0.0, max_tokens: 700 });
+        const retryRaw = (retry && retry.choices && retry.choices[0] && (retry.choices[0].message?.content || retry.choices[0].text)) || null;
+        parsedResponse = extractJSON(retryRaw);
+      } catch (e2) {
+        // final fallback to local heuristics
+        const weekdayDate = parseWeekdayInTranscript(transcript);
+        const timeMatch = parseTimeInTranscript(transcript);
+        let cleanTitle = transcript.replace(/\b(schedule|appointment|meeting|event|for|at)\b/gi, '').replace(/\b\d{1,2}(:\d{2})?\s*(a\.?m\.?|p\.?m\.?)\b/gi, '').replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '').trim();
+        if (!cleanTitle || cleanTitle.length < 2) cleanTitle = 'Appointment';
+        return { text: transcript, intent: 'schedule', confidence: 0.5, extractedData: { title: cleanTitle, date: weekdayDate, time: timeMatch, priority: 'medium' }, error: 'AI parsing failed, using enhanced fallback' };
       }
     }
-    
-    // If multiple tasks detected, we'll handle splitting on the client side
-    return {
-      text: transcript,
-      ...parsedResponse
-    };
-    
+
+    // If AI didn't parse a date but we can detect a weekday, add it
+    if (parsedResponse && !parsedResponse.extractedData) parsedResponse.extractedData = {};
+    if (parsedResponse && !parsedResponse.extractedData.date && !parsedResponse.extractedData.dueDate) {
+      const weekdayDate = parseWeekdayInTranscript(transcript);
+      if (weekdayDate) parsedResponse.extractedData.date = weekdayDate;
+    }
+
+    return { text: transcript, ...parsedResponse };
+
   } catch (error) {
     console.error('OpenAI parsing error:', error);
-    
-    // Enhanced fallback with weekday and time parsing
+    // Fallback final
     const weekdayDate = parseWeekdayInTranscript(transcript);
     const timeMatch = parseTimeInTranscript(transcript);
-    
-    console.log('Fallback parser debug:', {
-      transcript: transcript,
-      weekdayDate: weekdayDate,
-      timeMatch: timeMatch
-    });
-    
-    // Clean up the title by removing command words and time references
-    let cleanTitle = transcript
-      .replace(/\b(schedule|appointment|meeting|event|for|at)\b/gi, '')
-      .replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/gi, '')
-      .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
-      .trim();
-    
-    // If title is empty or just whitespace, use a default
-    if (!cleanTitle || cleanTitle.length < 2) {
-      cleanTitle = 'Appointment';
-    }
-    
-    console.log('Fallback parser result:', {
-      transcript: transcript,
-      cleanTitle: cleanTitle,
-      weekdayDate: weekdayDate,
-      timeMatch: timeMatch,
-      hasDate: !!weekdayDate,
-      hasTime: !!timeMatch
-    });
-    
-    return {
-      text: transcript,
-      intent: 'schedule',
-      confidence: 0.5,
-      extractedData: {
-        title: cleanTitle,
-        date: weekdayDate,
-        time: timeMatch,
-        priority: 'medium'
-      },
-      error: 'AI parsing failed, using enhanced fallback'
-    };
+    let cleanTitle = transcript.replace(/\b(schedule|appointment|meeting|event|for|at)\b/gi, '').replace(/\b\d{1,2}(:\d{2})?\s*(a\.?m\.?|p\.?m\.?)\b/gi, '').replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '').trim();
+    if (!cleanTitle || cleanTitle.length < 2) cleanTitle = 'Appointment';
+    return { text: transcript, intent: 'schedule', confidence: 0.5, extractedData: { title: cleanTitle, date: weekdayDate, time: timeMatch, priority: 'medium' }, error: 'AI parsing failed, using enhanced fallback' };
   }
 }
 
