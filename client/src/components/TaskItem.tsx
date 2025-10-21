@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Trash2, Edit3, Calendar, Clock, AlertCircle } from 'lucide-react';
-import { Task } from '@shared/types';
+import { Check, Trash2, Edit3, Calendar, Clock, AlertCircle, Users, Plus, X } from 'lucide-react';
+import { Task, Attendee } from '@shared/types';
 import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
 import { CalendarSync } from './CalendarSync';
 
@@ -17,12 +17,37 @@ interface TaskItemProps {
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onUpdate, onSync, onUnsync }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
+  const [isAddingAttendee, setIsAddingAttendee] = useState(false);
+  const [newAttendeeEmail, setNewAttendeeEmail] = useState('');
+  const [newAttendeeName, setNewAttendeeName] = useState('');
 
   const handleSave = () => {
     if (editTitle.trim()) {
       onUpdate(task.id, { title: editTitle.trim() });
       setIsEditing(false);
     }
+  };
+
+  const handleAddAttendee = () => {
+    if (newAttendeeEmail.trim()) {
+      const newAttendee: Attendee = {
+        email: newAttendeeEmail.trim(),
+        displayName: newAttendeeName.trim() || undefined,
+        responseStatus: 'needsAction'
+      };
+      
+      const updatedAttendees = [...(task.attendees || []), newAttendee];
+      onUpdate(task.id, { attendees: updatedAttendees });
+      
+      setNewAttendeeEmail('');
+      setNewAttendeeName('');
+      setIsAddingAttendee(false);
+    }
+  };
+
+  const handleRemoveAttendee = (email: string) => {
+    const updatedAttendees = (task.attendees || []).filter(attendee => attendee.email !== email);
+    onUpdate(task.id, { attendees: updatedAttendees });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -125,6 +150,77 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
 
           {task.description && (
             <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+          )}
+
+          {/* Attendees */}
+          {task.attendees && task.attendees.length > 0 && (
+            <div className="mt-2">
+              <div className="flex items-center space-x-1 text-gray-500 mb-1">
+                <Users className="w-4 h-4" />
+                <span className="text-xs font-medium">Attendees:</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {task.attendees.map((attendee, index) => (
+                  <div key={index} className="flex items-center space-x-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs">
+                    <span>{attendee.displayName || attendee.email}</span>
+                    <button
+                      onClick={() => handleRemoveAttendee(attendee.email)}
+                      className="hover:text-blue-900 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add Attendee */}
+          {isAddingAttendee ? (
+            <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+              <div className="flex flex-col space-y-2">
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={newAttendeeEmail}
+                  onChange={(e) => setNewAttendeeEmail(e.target.value)}
+                  className="text-sm px-2 py-1 border border-gray-300 rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Display name (optional)"
+                  value={newAttendeeName}
+                  onChange={(e) => setNewAttendeeName(e.target.value)}
+                  className="text-sm px-2 py-1 border border-gray-300 rounded"
+                />
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleAddAttendee}
+                    className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAddingAttendee(false);
+                      setNewAttendeeEmail('');
+                      setNewAttendeeName('');
+                    }}
+                    className="text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingAttendee(true)}
+              className="mt-2 flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add attendee</span>
+            </button>
           )}
 
           {/* Metadata */}

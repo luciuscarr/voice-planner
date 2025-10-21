@@ -123,6 +123,15 @@ router.post('/sync-task', async (req, res) => {
       colorId: task.priority === 'high' ? '11' : task.priority === 'medium' ? '5' : '10', // Red, Yellow, Green
     };
 
+    // Add attendees if present
+    if (Array.isArray(task.attendees) && task.attendees.length > 0) {
+      event.attendees = task.attendees.map(attendee => ({
+        email: attendee.email,
+        displayName: attendee.displayName || undefined,
+        responseStatus: attendee.responseStatus || 'needsAction'
+      }));
+    }
+
     // Add Google Calendar reminders if present
     if (Array.isArray(task.reminders) && task.reminders.length > 0) {
       event.reminders = {
@@ -243,6 +252,12 @@ router.get('/events', async (req, res) => {
       calendarEventId: e.id,
       createdAt: e.created || new Date().toISOString(),
       updatedAt: e.updated || new Date().toISOString(),
+      // Import attendees if present
+      attendees: e.attendees ? e.attendees.map(attendee => ({
+        email: attendee.email,
+        displayName: attendee.displayName,
+        responseStatus: attendee.responseStatus
+      })) : undefined,
     }));
 
     console.log('Calendar import results:', {

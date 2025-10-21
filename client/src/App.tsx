@@ -166,6 +166,8 @@ function App() {
             const merged = Array.from(new Set([...r1, ...r2]));
             return merged.length > 0 ? merged : undefined;
           })(),
+          // Include attendees if present
+          attendees: cmd.extractedData?.attendees || undefined,
           // Build dueDate in user's LOCAL timezone from AI's date/time when available
           dueDate: (() => {
             const due = cmd.extractedData?.dueDate;
@@ -329,6 +331,7 @@ function App() {
         completed: false,
         priority: command.extractedData?.priority || 'medium',
         dueDate: bestSlot.start.toISOString(),
+        attendees: command.extractedData?.attendees || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
