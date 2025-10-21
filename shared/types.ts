@@ -1,3 +1,9 @@
+export interface Attendee {
+  email: string;
+  displayName?: string;
+  responseStatus?: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -5,12 +11,14 @@ export interface Task {
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
   dueDate?: string;
-  // Minutes before dueDate when notifications should fire (e.g., [60, 30])
-  reminders?: number[];
-  calendarEventId?: string;
   createdAt: string;
   updatedAt: string;
+  attendees?: Attendee[];
+  calendarEventId?: string;
+  reminders?: number[];
 }
+
+
 
 export interface VoiceCommand {
   text: string;

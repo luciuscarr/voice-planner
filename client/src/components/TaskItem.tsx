@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Trash2, Edit3, Calendar, Clock, AlertCircle, Users, Plus, X } from 'lucide-react';
-import { Task, Attendee } from '@shared/types';
+import { Task } from '@shared/types';
 import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
 import { CalendarSync } from './CalendarSync';
+
+// Temporary local definition until shared types are properly resolved
+interface Attendee {
+  email: string;
+  displayName?: string;
+  responseStatus?: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+}
 
 interface TaskItemProps {
   task: Task;
